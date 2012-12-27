@@ -9,6 +9,16 @@ class LightWaveRF
     end
     YAML.load_file file
   end
+
+  # Turn one of your devices on or off
+  #
+  # Example:
+  #   >> LightWaveRF.go 'our', 'light', 'on'
+  #
+  # Arguments:
+  #   room: (String)
+  #   device: (String)
+  #   state: (String)
   def go room, device, state
     require 'socket'
     config = self.config

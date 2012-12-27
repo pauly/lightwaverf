@@ -8,5 +8,6 @@ Gem::Specification.new do |s|
   s.email       = 'pauly@clarkeology.com'
   s.files       = [ 'lib/lightwaverf.rb' ]
   s.homepage    = 'http://www.clarkeology.com/wiki/lightwaverf+ruby+gem'
+  s.executables << 'lightwaverf'
 end
 
