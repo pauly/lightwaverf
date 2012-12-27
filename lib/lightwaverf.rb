@@ -13,7 +13,7 @@ class LightWaveRF
   # Turn one of your devices on or off
   #
   # Example:
-  #   >> LightWaveRF.go 'our', 'light', 'on'
+  #   >> LightWaveRF.new.go 'our', 'light', 'on'
   #
   # Arguments:
   #   room: (String)
