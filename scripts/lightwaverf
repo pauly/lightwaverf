@@ -1,0 +1,3 @@
+#!/usr/bin/ruby
+require './lib/lightwaverf.rb'
+LightWaveRF.new.go ARGV[0], ARGV[1], ARGV[2]
