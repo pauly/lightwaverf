@@ -1,7 +1,28 @@
+require 'yaml'
+require 'socket'
+include Socket::Constants
+
 class LightWaveRF
 
   @config_file = nil
+  @config = nil
 
+  def usage
+    rooms = self.class.get_rooms self.get_config
+    'usage: lightwaverf ' + rooms.keys.first + ' ' + rooms.values.first['device'].keys.first.to_s + ' on'
+  end
+
+  def help
+    help = self.usage + "\n"
+    help += 'your rooms, devices, and sequences, as defined in ' + self.get_config_file + ":\n"
+    help += YAML.dump self.get_config['room']
+  end
+
+  def config_json
+    require 'json'
+    JSON self.get_config
+  end
+    
   def set_config_file file
     @config_file = file
   end
@@ -11,13 +32,15 @@ class LightWaveRF
   end
 
   def get_config
-    require 'yaml'
-    if ! File.exists? self.get_config_file
-      File.open( @config_file, 'w' ) do | handle |
-        handle.write YAML.dump( { 'host' => '192.168.0.14', 'room' => { 'our' => [ 'light', 'lights' ] } } )
+    if ! @config
+      if ! File.exists? self.get_config_file
+        File.open( self.get_config_file, 'w' ) do | handle |
+          handle.write YAML.dump( { 'host' => '192.168.0.14', 'room' => { 'our' => [ 'light', 'lights' ] }, 'sequence' => { 'lights' => [ [ 'our', 'light', 'on' ], [ 'our', 'lights', 'on' ] ] }} )
+        end
       end
+      @config = YAML.load_file self.get_config_file
     end
-    YAML.load_file self.get_config_file
+    @config
   end
 
   def self.get_rooms config = { 'room' => { }}
@@ -63,22 +86,41 @@ class LightWaveRF
   # Turn one of your devices on or off
   #
   # Example:
-  #   >> LightWaveRF.new.go 'our', 'light', 'on'
+  #   >> LightWaveRF.new.send 'our', 'light', 'on'
   #
   # Arguments:
   #   room: (String)
   #   device: (String)
   #   state: (String)
-  def go room, device, state = 'on', debug = false
-    require 'socket'
-    config = self.get_config
-    debug && ( p 'config is ' + config.to_s )
-    rooms = self.class.get_rooms config
-    room = rooms[room]
+  def send room = nil, device = nil, state = 'on', debug = false
+    debug && ( p 'config is ' + self.get_config.to_s )
+    rooms = self.class.get_rooms self.get_config
     state = self.class.get_state state
-    room && device && state && room['device'][device] || abort( "usage: #{__FILE__} [" + rooms.keys.join( "|" ) + "] light on" )
-    command = self.command room, device, state
-    debug && ( p 'command is ' + command )
-    UDPSocket.new.send command, 0, config['host'], 9760
+    if rooms[room] && device && state && rooms[room]['device'][device]
+      command = self.command rooms[room], device, state
+      debug && ( p 'command is ' + command )
+      UDPSocket.new.send command, 0, self.get_config['host'], 9760
+    else
+      STDERR.puts self.usage
+    end
   end
+
+  def sequence name, debug = false
+    if self.get_config['sequence'][name]
+      self.get_config['sequence'][name].each do | task |
+        self.send task[0], task[1], task[2], debug
+        sleep 1
+      end
+    end
+  end
+
+  def energy
+    listener = UDPSocket.new
+    listener.bind '0.0.0.0', 9761
+    UDPSocket.new.send "666,@?", 0, self.get_config['host'], 9760
+    data, addr = listener.recvfrom 200
+    listener.close
+    data = /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match( data )
+  end
+
 end

@@ -1,3 +1,7 @@
 #!/usr/bin/ruby
 require 'lightwaverf'
-LightWaveRF.new.go ARGV[0], ARGV[1], ARGV[2]
+if ARGV[0] == 'help'
+  LightWaveRF.new.help
+else
+  LightWaveRF.new.send ARGV[0], ARGV[1], ARGV[2]
+end
