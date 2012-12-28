@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'lightwaverf'
-  s.version     = '0.0.1'
+  s.version     = '0.0.3'
   s.date        = '2012-12-28'
   s.summary     = 'Home automation'
   s.description = 'Interact with lightwaverf wifi link from the command line'
