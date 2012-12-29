@@ -1,0 +1,12 @@
+#!/usr/bin/ruby
+require './lib/lightwaverf.rb'
+# LightWaveRF.new.send 'our', 'light', 10, true
+# sleep 2
+# LightWaveRF.new.send 'our', 'light', 'off', true
+# p 'then cause an error'
+# p LightWaveRF.new.send 'help'
+# p 'then return some json'
+# p LightWaveRF.new.config_json
+# p 'then do a sequence'
+# p LightWaveRF.new.sequence 'bed', true
+p LightWaveRF.new.energy.inspect

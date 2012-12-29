@@ -1,0 +1,26 @@
+---
+host: 192.168.0.14
+room:
+  our:
+  - light
+  - lights
+  - kettle
+  - tv
+  dining:
+  - light
+  - lights
+  harry:
+  - light
+  tommy:
+  - light
+  lounge:
+  - light
+  - lights
+sequence:
+  bed:
+  - - our
+    - light
+    - 'off'
+  - - our
+    - lights
+    - 'off'
