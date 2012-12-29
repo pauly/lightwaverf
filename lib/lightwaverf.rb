@@ -20,7 +20,8 @@ class LightWaveRF
 
   def config_json
     require 'json'
-    JSON self.get_config
+    require 'pp'
+    JSON.generate self.get_config
   end
     
   def set_config_file file

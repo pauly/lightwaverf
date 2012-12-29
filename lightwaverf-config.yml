@@ -16,6 +16,9 @@ room:
   lounge:
   - light
   - lights
+  kitchen:
+  - kettle
+  - toaster
 sequence:
   bed:
   - - our
