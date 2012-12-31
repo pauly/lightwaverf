@@ -21,12 +21,6 @@ class LightWaveRF
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
-  def config_json
-    require 'json'
-    require 'pp'
-    JSON.generate self.get_config
-  end
-    
   def set_config_file file
     @config_file = file
   end
@@ -103,7 +97,7 @@ class LightWaveRF
   #   device: (String)
   #   state: (String)
   def send room = nil, device = nil, state = 'on', debug = false
-    debug && ( p 'config is ' + self.get_config.to_s )
+    debug && ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config
     state = self.class.get_state state
     if rooms[room] && device && state && rooms[room]['device'][device]
@@ -135,10 +129,9 @@ class LightWaveRF
 
   def energy
     data = self.raw '666,@?'
-    p data
-    # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match( data ) # ruby 1.9 only?
-    match = /W=(\d+),(\d+),(\d+),(\d+)/.match( data )
-    { 'usage' => match[0], 'max' => match[1], 'today' => match[2], 'yesterday' => match[3] }
+    # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match data # ruby 1.9 only?
+    match = /W=(\d+),(\d+),(\d+),(\d+)/.match data
+    match and { 'usage' => match[1], 'max' => match[2], 'today' => match[3], 'yesterday' => match[4] }
   end
 
   def raw command
