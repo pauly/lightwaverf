@@ -1,7 +1,10 @@
 #!/usr/bin/ruby
 require 'lightwaverf'
-if ARGV[0] == 'help'
-  LightWaveRF.new.help
-else
-  LightWaveRF.new.send ARGV[0], ARGV[1], ARGV[2]
+case ARGV[0]
+  when 'help'
+    puts LightWaveRF.new.help
+  when 'energy'
+    puts LightWaveRF.new.energy
+  else
+    LightWaveRF.new.send ARGV[0], ARGV[1], ARGV[2], ARGV[4]
 end

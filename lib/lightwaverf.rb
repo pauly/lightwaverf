@@ -9,13 +9,16 @@ class LightWaveRF
 
   def usage
     rooms = self.class.get_rooms self.get_config
-    'usage: lightwaverf ' + rooms.keys.first + ' ' + rooms.values.first['device'].keys.first.to_s + ' on'
+    'usage: lightwaverf ' + rooms.keys.first + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
   end
 
   def help
     help = self.usage + "\n"
-    help += 'your rooms, devices, and sequences, as defined in ' + self.get_config_file + ":\n"
+    help += "your rooms, devices, and sequences, as defined in " + self.get_config_file + ":\n\n"
     help += YAML.dump self.get_config['room']
+    room = self.get_config['room'].keys.last
+    device = self.get_config['room'][room].last
+    help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
   def config_json
@@ -48,9 +51,10 @@ class LightWaveRF
     rooms = { }
     r = 1
     config['room'].each do | name, devices |
-      rooms[name] = { 'id' => 'R' + r.to_s, 'device' => { }}
+      rooms[name] = { 'id' => 'R' + r.to_s, 'name' => name, 'device' => { }}
       d = 1
       devices.each do | device |
+        # @todo possibly need to complicate this to get a device name back in here
         rooms[name]['device'][device] = 'D' + d.to_s
         d += 1
       end
@@ -65,8 +69,12 @@ class LightWaveRF
         state = 'F0'
       when 'on'
         state = 'F1'
-      when 1..99
+      when 1..100
         state = 'FdP' + ( state * 0.32 ).round.to_s
+      else
+        if state
+          p 'did not recognise state, got ' + state
+        end
     end
     state
   end
@@ -81,7 +89,8 @@ class LightWaveRF
   #   device: (String)
   #   state: (String)
   def command room, device, state
-    "666,!" + room['id'] + room['device'][device] + state + "|"
+    # @todo get the device name in here...
+   '666,!' + room['id'] + room['device'][device] + state + '|' + room['name'] + ' ' + room['id'] + '|via @pauly'
   end
 
   # Turn one of your devices on or off
@@ -100,12 +109,21 @@ class LightWaveRF
     if rooms[room] && device && state && rooms[room]['device'][device]
       command = self.command rooms[room], device, state
       debug && ( p 'command is ' + command )
-      UDPSocket.new.send command, 0, self.get_config['host'], 9760
+      self.raw command
     else
       STDERR.puts self.usage
     end
   end
 
+  # A sequence of events
+  # maybe I really mean a "mood" here?
+  #
+  # Example:
+  #   >> LightWaveRF.new.sequence 'lights'
+  #
+  # Arguments:
+  #   name: (String)
+  #   debug: (Boolean)
   def sequence name, debug = false
     if self.get_config['sequence'][name]
       self.get_config['sequence'][name].each do | task |
@@ -116,12 +134,27 @@ class LightWaveRF
   end
 
   def energy
-    listener = UDPSocket.new
-    listener.bind '0.0.0.0', 9761
-    UDPSocket.new.send "666,@?", 0, self.get_config['host'], 9760
-    data, addr = listener.recvfrom 200
-    listener.close
-    data = /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match( data )
+    data = self.raw '666,@?'
+    p data
+    # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match( data ) # ruby 1.9 only?
+    match = /W=(\d+),(\d+),(\d+),(\d+)/.match( data )
+    { 'usage' => match[0], 'max' => match[1], 'today' => match[2], 'yesterday' => match[3] }
+  end
+
+  def raw command
+    response = nil
+    begin
+      listener = UDPSocket.new
+      listener.bind '0.0.0.0', 9761
+    rescue
+      response = "can't bind to listen for a reply"
+    end
+    UDPSocket.new.send command, 0, self.get_config['host'], 9760
+    if ! response
+      response, addr = listener.recvfrom 200
+      listener.close
+    end
+    response
   end
 
 end
