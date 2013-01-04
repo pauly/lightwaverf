@@ -57,6 +57,14 @@ class LightWaveRF
     rooms
   end
 
+  # Translate the "state" we pass in to one the wifi link understands
+  #
+  # Example:
+  #   >> LightWaveRF.new.state 'on' # 'F1'
+  #   >> LightWaveRF.new.state 'off' # 'F0'
+  #
+  # Arguments:
+  #   state: (String)
   def self.get_state state = 'on'
     case state
       when 'off'
@@ -150,4 +158,62 @@ class LightWaveRF
     response
   end
 
+  # Use a google calendar as a timer?
+  # Needs a google calendar, with its url in your config file, with events like "lounge light on" etc
+  # Only the start time of the event is used right now.
+  # 
+  # Run this as a cron job every 5 mins, ie
+  # */5 * * * * /usr/local/bin/lightwaverf timer 5 > /tmp/timer.out 2>&1
+  # 
+  # Example:
+  #   >> LightWaveRF.new.timer
+  #   >> LightWaveRF.new.state 10
+  #
+  # Sample calendar:
+  #   https://www.google.com/calendar/feeds/aar79qh62fej54nprq6334s7ck%40group.calendar.google.com/public/basic
+  #   https://www.google.com/calendar/embed?src=aar79qh62fej54nprq6334s7ck%40group.calendar.google.com&ctz=Europe/London 
+  #
+  # Arguments:
+  #   interval: (Integer)
+  #   debug: (Boolean)
+  # 
+  # @todo actually use the interval we said...
+  def timer interval = 5, debug = false
+    require 'net/http'
+    require 'rexml/document'
+    url = LightWaveRF.new.get_config['calendar'] + '?singleevents=true&start-min=' + Date.today.strftime( '%Y-%m-%d' ) + '&start-max=' + Date.today.next.strftime( '%Y-%m-%d' )
+    debug && ( p url )
+    parsed_url = URI.parse url
+    http = Net::HTTP.new parsed_url.host, parsed_url.port
+    http.use_ssl = true
+    request = Net::HTTP::Get.new parsed_url.request_uri
+    response = http.request request
+    doc = REXML::Document.new response.body
+    now = Time.now.strftime '%H:%M'
+    five_mins = ( Time.now + 5 * 60 ).strftime '%H:%M'
+    triggered = 0
+    doc.elements.each 'feed/entry' do | e |
+      command = /(\w+) (\w+) (\w+)/.match e.elements['title'].text # look for events with a title like 'lounge light on'
+      if command
+        room = command[1].to_s
+        device = command[2].to_s
+        status = command[3]
+        timer = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)/.match e.elements['summary'].text
+        if timer
+          from = timer[2].to_s # we only use the 'from' time right now
+          to = timer[4] # we could use the 'to' time later, better for central heating events
+        else
+          STDERR.puts 'did not get When: in ' + e.elements['summary'].text
+        end
+        debug && ( p e.elements['title'] + ' - ' + now + ' < ' + from + ' < ' + five_mins + ' ?' )
+        if from >= now && from < five_mins
+          debug && ( p 'so going to turn the ' + room + ' ' + device + ' ' + status.to_s + ' now!' )
+          self.send room, device, status.to_s
+          triggered += 1
+        end
+      end
+    end
+    triggered.to_s + " events triggered"
+  end
 end
+
