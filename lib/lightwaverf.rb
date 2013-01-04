@@ -190,25 +190,30 @@ class LightWaveRF
     response = http.request request
     doc = REXML::Document.new response.body
     now = Time.now.strftime '%H:%M'
-    five_mins = ( Time.now + 5 * 60 ).strftime '%H:%M'
+    interval_end_time = ( Time.now + interval.to_i * 60 ).strftime '%H:%M'
     triggered = 0
     doc.elements.each 'feed/entry' do | e |
-      command = /(\w+) (\w+) (\w+)/.match e.elements['title'].text # look for events with a title like 'lounge light on'
+      command = /(\w+) (\w+)( (\w+))?/.match e.elements['title'].text # look for events with a title like 'lounge light on'
       if command
         room = command[1].to_s
         device = command[2].to_s
-        status = command[3]
+        status = command[4]
         timer = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)/.match e.elements['summary'].text
         if timer
-          from = timer[2].to_s # we only use the 'from' time right now
-          to = timer[4] # we could use the 'to' time later, better for central heating events
+          event_time = timer[2].to_s
+          event_end_time = timer[4]
         else
           STDERR.puts 'did not get When: in ' + e.elements['summary'].text
         end
-        debug && ( p e.elements['title'] + ' - ' + now + ' < ' + from + ' < ' + five_mins + ' ?' )
-        if from >= now && from < five_mins
+        if ! status
+          event_time = event_end_time
+          status = 'off'
+        end
+        debug && ( p e.elements['title'].text + ' - ' + now + ' < ' + event_time + ' < ' + interval_end_time + ' ?' )
+        if event_time >= now && event_time < interval_end_time
           debug && ( p 'so going to turn the ' + room + ' ' + device + ' ' + status.to_s + ' now!' )
           self.send room, device, status.to_s
+          sleep 1
           triggered += 1
         end
       end
