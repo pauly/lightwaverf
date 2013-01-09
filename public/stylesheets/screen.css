@@ -1,0 +1,98 @@
+body {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	margin: 0 auto;
+	max-width: 90em;
+	padding: 1em 0;
+}
+a {
+	color: #06f;
+  font-style: underline;
+}
+h1, h2, h3 {
+	font-size: 1em;
+}
+h2, h3, h4 {
+	margin-top: 0;
+}
+h3, h4 {
+	margin-bottom: 0.5em;
+}
+
+p, ul {
+	font-size: 0.8125em;
+	line-height: 1.5;
+	margin: 0 0 1.5em;
+}
+code {
+	font-size: 1.2727em;
+	color: #777;
+}
+iframe {
+	border: 0;
+	overflow: hidden;
+}
+
+p {
+  color: #333;
+}
+
+div div {
+  border-bottom: 1px dotted #aaa;
+  border-right: 1px dotted #aaa;
+  margin-bottom: 1.5em;
+  -webkit-border-radius: 15px;
+  -moz-border-radius: 15px;
+  border-radius: 15px;
+}
+div div div div {
+  border: none;
+}
+
+html {
+	background-color: #f6f6f6;
+}
+div.gbbs {
+  opacity: 0.9;
+}
+div.gbbs * {
+  opacity: 1;
+}
+
+div.sidebar p {
+	overflow: hidden;
+}
+div.sidebar col.photo {
+	width: 300px;
+}
+div.sidebar ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+@media only screen and (min-width: 34em) {
+	p, ul {
+		font-size: 0.875em;
+	}
+	.feature:first-child,
+	.info:first-child {
+		border-right: 1px dotted #aaa;
+	}
+	body {
+		padding: 1em;
+	}
+}
+
+@media only screen and (min-width: 54em) {
+	.info:first-child {
+		border: none;
+	}
+}
+
+@media only screen and (min-width: 76em) {
+	.info:first-child {
+		border-right: 1px dotted #aaa;
+	}
+	h1 {
+		font-size: 1.2em;
+	}
+}

@@ -1,0 +1,14 @@
+body { max-width: 90em; }
+@media only screen and (min-width: 34em) {
+	.feature, .info { width: 50%; }
+}
+@media only screen and (min-width: 54em) {
+	.content { width: 70%; }
+	.sidebar { width: 30%; }
+	.info    { width: 100%; }
+}
+@media only screen and (min-width: 76em) {
+	.content { width: 60%; }
+	.sidebar { width: 40%; }
+	.info    { width: 40%; }
+}
