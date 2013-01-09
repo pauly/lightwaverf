@@ -20,6 +20,12 @@ room:
   kitchen:
   - kettle
   - toaster
+  cloakroom:
+  - light
+  hall:
+  - light
+  landing:
+  - light
 sequence:
   bed:
   - - our

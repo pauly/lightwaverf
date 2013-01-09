@@ -177,7 +177,6 @@ class LightWaveRF
   #   interval: (Integer)
   #   debug: (Boolean)
   # 
-  # @todo actually use the interval we said...
   def timer interval = 5, debug = false
     require 'net/http'
     require 'rexml/document'
@@ -205,6 +204,8 @@ class LightWaveRF
         else
           STDERR.puts 'did not get When: in ' + e.elements['summary'].text
         end
+        # @todo fix events that start and end in this period
+        # @todo fix events with no status that only start in this period (turn them on)
         if ! status
           event_time = event_end_time
           status = 'off'
