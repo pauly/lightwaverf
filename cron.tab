@@ -1,0 +1,1 @@
+*/5 * * * * /usr/local/bin/lightwaverf timer 5 > /tmp/timer.out 2>&1

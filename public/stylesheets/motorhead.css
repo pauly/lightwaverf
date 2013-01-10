@@ -1,0 +1,17 @@
+@font-face {
+    font-family: 'motorheadregular';
+    src: url('//www.motorheadphones.com/static/fonts/motorhead-webfont.eot');
+    src: url('//www.motorheadphones.com/static/fonts/motorhead-webfont.eot?#iefix') format('embedded-opentype'),
+        url('//www.motorheadphones.com/static/fonts/motorhead-webfont.woff') format('woff'),
+        url('//www.motorheadphones.com/static/fonts/motorhead-webfont.ttf') format('truetype'),
+        url('//www.motorheadphones.com/static/fonts/motorhead-webfont.svg#motorheadregular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+
+}
+.motorhead {
+  font-size: 5em;
+    font-family: 'motorheadregular';
+    letter-spacing: 2px;
+}
+
