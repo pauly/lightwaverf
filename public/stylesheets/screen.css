@@ -27,13 +27,13 @@ code {
 	font-size: 1.2727em;
 	color: #777;
 }
-iframe {
-	border: 0;
-	overflow: hidden;
-}
 
 p {
   color: #333;
+}
+
+dd {
+  margin: 1em;
 }
 
 div div {

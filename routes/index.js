@@ -5,17 +5,15 @@
 
 exports.index = function( req, res ) {
   var summary = '';
-  // var fs=require( 'fs' );
-  // var inp = fs.createReadStream( '/home/pi/lightwaverf-summary.json' );
-  // inp.setEncoding( 'utf8' );
-  // inp.on( 'data', function ( data ) {
-    // summary += data;
-  // } );
-  // inp.on( 'end', function (close) {
+  var sys = require('sys')
+  var exec = require('child_process').exec;
+  function uptime(error, stdout, stderr) {
+    console.log(stdout)
     res.render( 'index', {
       title: 'raspberry pi homepage',
       ustream: 'offline',
-      summary: summary || '[]'
+      uptime: stdout
     } );
-  // } );
+  }
+  exec( "uptime", uptime );
 };
