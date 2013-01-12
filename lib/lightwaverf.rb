@@ -205,7 +205,7 @@ class LightWaveRF
           STDERR.puts 'did not get When: in ' + e.elements['summary'].text
         end
         # @todo fix events that start and end in this period
-        # @todo fix events with no status that only start in this period (turn them on)
+        # @todo fix events with no status that only start in this period (turn them on) - kettle is not coming on right now
         if ! status
           event_time = event_end_time
           status = 'off'

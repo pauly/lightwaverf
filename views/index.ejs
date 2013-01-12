@@ -1,20 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <!-- 
-      $output = array( );
-      $match = array( );
-      $ustream = json_decode( file_get_contents( 'http://api.ustream.tv/json/channel/paulypopex/getValueOf/status?key=4C8C8AA9814C796A8C908D1E6315FAE7' ));
-    -->
     <title><%= title %></title>
-    <link rel='stylesheet' href='/stylesheets/style.css' />
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <link rel="stylesheet" href="/stylesheets/grid.css">
-    <link rel="stylesheet" href="/stylesheets/layout.css">
-    <link rel="stylesheet" href="/stylesheets/screen.css">
-    <link rel="stylesheet" href="/stylesheets/home_automation_stats.css">
-    <link rel="stylesheet" href="/stylesheets/motorhead.css">
+    <% include head %>
   </head>
   <body>
     <div class="container">
@@ -25,7 +13,7 @@
         <div class="col content gbbs">
           <dl>
             <dt>This is my <a href="http://amzn.to/Xm9XJ7">raspberry pi</a> homepage.</dt>
-            <dd>This site is hosted on my <a href="http://amzn.to/Xm9XJ7">raspberry pi</a>, from my house. So it may be slow, or unavailable at any time.</dd>
+            <dd><% include disclaimer %></dd>
             <dt><a>Home Automation</a></dt>
             <dd>
               <% include automation-intro %>

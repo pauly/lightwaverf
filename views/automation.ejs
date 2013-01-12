@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <% include head %>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row col">
+        <h1 class="motorhead"><%= title %></h1>
+      </div>
+      <div class="row">
+        <div class="col content gbbs">
+          <p><% include disclaimer %></p>
+          <p><% include automation-intro %></p>
+          <div id="energy_chart"></div>
+          <p>Rooms and devices:</p>
+          <pre><%= config %></pre>
+          <!--
+            foreach ( $config['room'] as $name => $devices ) {
+              echo '<dt><a>' . $name . '</a></dt>';
+              echo '<dd style="display: none"><dl>';
+              foreach ( $devices as $device ) {
+                echo '<dt><a>' . $device . '</a></dt>';
+                echo '<dd style="display: none">In theory you could be turning ' . $name . ' ' . $device . ' ';
+                echo '<a class="ajax" href="/automation/' . $name . '/' . $device . '/on">on</a>';
+                echo ' or ';
+                echo '<a class="ajax" href="/automation/' . $name . '/' . $device . '/off">off</a>';
+                echo ' here!</dd>';
+              }
+              echo '</dl></dd>';
+            }
+          -->
+        </div>
+        <% include sidebar %>
+      </div>
+    </div>
+    <% include graphs %>
+  </body>
+</html>

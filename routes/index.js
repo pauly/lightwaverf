@@ -10,7 +10,7 @@ exports.index = function( req, res ) {
   function uptime(error, stdout, stderr) {
     console.log(stdout)
     res.render( 'index', {
-      title: 'raspberry pi homepage',
+      title: 'raspberry pi hömepage',
       ustream: 'offline',
       uptime: stdout
     } );

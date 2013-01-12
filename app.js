@@ -5,7 +5,7 @@
 
 var express = require('express');
 var routes = require('./routes');
-// var automation = require('./routes/automation');
+var automation = require('./routes/automation');
 var http = require('http');
 var path = require('path');
 
@@ -31,7 +31,7 @@ app.configure('development', function(){
 });
 
 app.get( '/', routes.index );
-// app.get( '/automation', automation.index );
+app.get( '/automation', automation.index );
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
