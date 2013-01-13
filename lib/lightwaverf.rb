@@ -206,16 +206,19 @@ class LightWaveRF
         end
         # @todo fix events that start and end in this period
         # @todo fix events with no status that only start in this period (turn them on) - kettle is not coming on right now
-        if ! status
-          event_time = event_end_time
-          status = 'off'
+        if status
+          event_times = { event_time => status }
+        else
+          event_times = { event_time => 'on', event_end_time => 'off' }
         end
-        debug && ( p e.elements['title'].text + ' - ' + now + ' < ' + event_time + ' < ' + interval_end_time + ' ?' )
-        if event_time >= now && event_time < interval_end_time
-          debug && ( p 'so going to turn the ' + room + ' ' + device + ' ' + status.to_s + ' now!' )
-          self.send room, device, status.to_s
-          sleep 1
-          triggered += 1
+        event_times.each do | t, s |
+          debug && ( p e.elements['title'].text + ' - ' + now + ' < ' + t + ' < ' + interval_end_time + ' ?' )
+          if t >= now && t < interval_end_time
+            debug && ( p 'so going to turn the ' + room + ' ' + device + ' ' + s.to_s + ' now!' )
+            self.send room, device, s.to_s
+            sleep 1
+            triggered += 1
+          end
         end
       end
     end
