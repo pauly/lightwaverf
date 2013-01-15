@@ -1,0 +1,78 @@
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+  var gauge, gauge_data, gauge_options;
+  google.load( 'visualization', '1.0', { packages: [ 'corechart', 'gauge', 'annotatedtimeline' ] } );
+  google.setOnLoadCallback( function ( ) {
+    var energy_data = new google.visualization.DataTable( );
+    energy_data.addColumn( 'date', 'Date' );
+    energy_data.addColumn( 'number', 'Electricity used' );
+    energy_data.addColumn( 'string', 'title1' );
+    energy_data.addColumn( 'string', 'text1' );
+    if (!Array.prototype.map) {
+      Array.prototype.map = function(callback, thisArg) {
+        var T, A, k;
+        if (this == null) {
+          throw new TypeError(" this is null or not defined");
+        }
+        var O = Object(this);
+        var len = O.length >>> 0;
+        if (typeof callback !== "function") {
+          throw new TypeError(callback + " is not a function");
+        }
+        if (thisArg) {
+          T = thisArg;
+        }
+        A = new Array(len);
+        k = 0;
+        while(k < len) {
+          var kValue, mappedValue;
+          if (k in O) {
+            kValue = O[ k ];
+            mappedValue = callback.call(T, kValue, k, O);
+            A[ k ] = mappedValue;
+          }
+          k++;
+        }
+        return A;
+      };      
+    }
+    var raw_data = <%= summary %>;
+    energy_data.addRows( raw_data.map( function ( e ) {
+      var d = '' + e[0];
+      e[0] = new Date( '20' + d[0] + d[1] + '-' + d[2] + d[3] + '-' + d[4] + d[5] + ' ' + d[6] + d[7] + ':' + d[8] + d[9] );
+      e[1] = e[1] * 10;
+      e[2] = e[2] || '';
+      e[3] = e[3] || '';
+      return e;
+    } ));
+    var chart = new google.visualization.AnnotatedTimeLine( document.getElementById( 'energy_chart' ));
+    chart.draw( energy_data, { displayAnnotations: true, title: '24 hours electricity usage' } );
+  
+    gauge = new google.visualization.Gauge( document.getElementById( 'gauge_div' ));
+    gauge_data = google.visualization.arrayToDataTable( [ ["Label", "Value"], ["Electric", raw_data.pop[1] ] ] );
+    gauge_options = {
+      width: '200',
+      height: '200',
+      redFrom: 90,
+      redTo: 100,
+      yellowFrom: 75,
+      yellowTo: 90,
+      minorTicks: 5
+    };
+    gauge.draw( gauge_data, gauge_options );
+  } );
+  $( function ( ) {
+    $('dt a').click( function ( ) {
+      $(this).parent( ).next('dd').slideDown( );
+      return false;
+    } );
+    $('a.ajax').click( function ( ) {
+      $a = $(this);
+      $.get( $a.attr('href'), function ( js ) {
+        alert( $a.text( ));
+      } );
+      return false;
+    } );
+  } );
+</script>

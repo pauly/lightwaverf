@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title><%= title %></title>
-    <% include head %>
-  </head>
+  <% include _head %>
   <body>
     <div class="container">
-      <% include header %>
+      <% include _header %>
       <div class="row">
         <div class="col content gbbs">
           <a href="/auth/twitter">please sign in with the twitter</a>
         </div>
-        <% include sidebar %>
+        <% include _sidebar %>
       </div>
     </div>
   </body>

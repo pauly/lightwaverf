@@ -1,20 +1,17 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title><%= title %></title>
-    <% include head %>
-  </head>
+  <% include _head %>
   <body>
     <div class="container">
-      <% include header %>
+      <% include _header %>
       <div class="row">
         <div class="col content gbbs">
           <dl>
             <dt>This is my <a href="http://amzn.to/Xm9XJ7">raspberry pi</a> homepage.</dt>
-            <dd><% include disclaimer %></dd>
+            <dd><% include _disclaimer %></dd>
             <dt><a>Home Automation</a></dt>
             <dd>
-              <% include automation-intro %>
+              <% include _automation-intro %>
             </dd>
             <dt><a>Paul TV (<%= ustream %>)</a></dt>
             <dd style="display: none"><iframe width="720" height="437" src="http://www.ustream.tv/embed/12921939?v=3&amp;wmode=direct" scrolling="no" frameborder="0" style="border: 0px none transparent;"></iframe>
@@ -25,22 +22,8 @@
             <dd><%= uptime %></dd>
           </dl>
         </div>
-        <% include sidebar %>
+        <% include _sidebar %>
       </div>
     </div>
-    <script>
-      $( function ( ) {
-        $('dt a').click( function ( ) {
-          $(this).parent( ).next('dd').slideDown( );
-        } );
-        $('a.ajax').click( function ( ) {
-          $a = $(this);
-          $.get( $a.attr('href'), function ( js ) {
-            alert( $a.text( ));
-          } );
-          return false;
-        } );
-      } );
-    </script>
   </body>
 </html>

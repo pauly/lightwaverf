@@ -66,6 +66,7 @@ app.configure(function() {
   app.use(express.static(__dirname + '/public'));
 });
 
+// $ustream = json_decode( file_get_contents( 'http://api.ustream.tv/json/channel/paulypopex/getValueOf/status?key=' + process.env.USTREAM_KEY )); 
 
 app.get( '/', routes.index );
 app.get( '/login', routes.login );

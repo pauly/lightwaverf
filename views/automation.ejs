@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title><%= title %></title>
-    <% include head %>
-  </head>
+  <% include _head %>
   <body>
     <div class="container">
-      <% include header %>
+      <% include _header %>
       <div class="row">
         <div class="col content gbbs">
-          <p><% include disclaimer %></p>
+          <p><% include _disclaimer %></p>
           <pre><% result %></pre>
-          <p><% include automation-intro %></p>
+          <p><% include _automation-intro %></p>
           <div id="energy_chart"></div>
           <p>Rooms and devices:</p>
           <dl>
@@ -19,13 +16,13 @@
             <dt><a href="/automation/<%= room %>/"><%= room %></a></dt>
             <dd style="display: none">
               <dl>
-              <% for ( var i in config.room[room] ) { %>
-                <dt><%= config.room[room][i].name %></dt>
+              <% for ( var device in config.room[room] ) { %>
+                <dt><%= device %></dt>
                 <dd style="display: none">
-                  In theory you could be turning <%= room %> <%= config.room[room][i].name %>
-                  <a class="ajax" href="/automation/<%= room %>/<%= config.room[room][i].name %>/on.js">on</a>
+                  Turn <%= room %> <%= device %>
+                  <a class="ajax" href="/automation/<%= room %>/<%= device %>/on.js">on</a>
                   or
-                  <a class="ajax" href="/automation/<%= room %>/<%= config.room[room][i].name %>/off.js">off</a>
+                  <a class="ajax" href="/automation/<%= room %>/<%= device %>/off.js">off</a>
                   here!
                 </dd>
               <% } %>
@@ -34,9 +31,9 @@
           <% } %>
           </dl>
         </div>
-        <% include sidebar %>
+        <% include _sidebar %>
       </div>
     </div>
-    <% include graphs %>
+    <% include _graphs %>
   </body>
 </html>
