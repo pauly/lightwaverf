@@ -6,31 +6,33 @@
   </head>
   <body>
     <div class="container">
-      <div class="row col">
-        <h1 class="motorhead"><%= title %></h1>
-      </div>
+      <% include header %>
       <div class="row">
         <div class="col content gbbs">
           <p><% include disclaimer %></p>
+          <pre><% result %></pre>
           <p><% include automation-intro %></p>
           <div id="energy_chart"></div>
           <p>Rooms and devices:</p>
-          <pre><%= config %></pre>
-          <!--
-            foreach ( $config['room'] as $name => $devices ) {
-              echo '<dt><a>' . $name . '</a></dt>';
-              echo '<dd style="display: none"><dl>';
-              foreach ( $devices as $device ) {
-                echo '<dt><a>' . $device . '</a></dt>';
-                echo '<dd style="display: none">In theory you could be turning ' . $name . ' ' . $device . ' ';
-                echo '<a class="ajax" href="/automation/' . $name . '/' . $device . '/on">on</a>';
-                echo ' or ';
-                echo '<a class="ajax" href="/automation/' . $name . '/' . $device . '/off">off</a>';
-                echo ' here!</dd>';
-              }
-              echo '</dl></dd>';
-            }
-          -->
+          <dl>
+          <% for ( var room in config.room ) { %>
+            <dt><a href="/automation/<%= room %>/"><%= room %></a></dt>
+            <dd style="display: none">
+              <dl>
+              <% for ( var i in config.room[room] ) { %>
+                <dt><%= config.room[room][i].name %></dt>
+                <dd style="display: none">
+                  In theory you could be turning <%= room %> <%= config.room[room][i].name %>
+                  <a class="ajax" href="/automation/<%= room %>/<%= config.room[room][i].name %>/on.js">on</a>
+                  or
+                  <a class="ajax" href="/automation/<%= room %>/<%= config.room[room][i].name %>/off.js">off</a>
+                  here!
+                </dd>
+              <% } %>
+              </dl>
+            </dd>
+          <% } %>
+          </dl>
         </div>
         <% include sidebar %>
       </div>
