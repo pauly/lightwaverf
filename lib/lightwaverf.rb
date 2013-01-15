@@ -7,11 +7,13 @@ class LightWaveRF
   @config_file = nil
   @config = nil
 
+  # Display usage info
   def usage
     rooms = self.class.get_rooms self.get_config
     'usage: lightwaverf ' + rooms.keys.first + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
   end
 
+  # Display help
   def help
     help = self.usage + "\n"
     help += "your rooms, devices, and sequences, as defined in " + self.get_config_file + ":\n\n"
@@ -21,14 +23,17 @@ class LightWaveRF
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
+  # Config file setter
   def set_config_file file
     @config_file = file
   end
 
+  # Config file getter
   def get_config_file
     @config_file || File.expand_path('~') + '/lightwaverf-config.yml'
   end
 
+  # Get the config file, create it if it does not exist
   def get_config
     if ! @config
       if ! File.exists? self.get_config_file
@@ -41,6 +46,7 @@ class LightWaveRF
     @config
   end
 
+  # Get a cleaned up version of the rooms and devices from the config file
   def self.get_rooms config = { 'room' => { }}
     rooms = { }
     r = 1
@@ -160,7 +166,6 @@ class LightWaveRF
 
   # Use a google calendar as a timer?
   # Needs a google calendar, with its url in your config file, with events like "lounge light on" etc
-  # Only the start time of the event is used right now.
   # 
   # Run this as a cron job every 5 mins, ie
   # */5 * * * * /usr/local/bin/lightwaverf timer 5 > /tmp/timer.out 2>&1
@@ -205,7 +210,6 @@ class LightWaveRF
           STDERR.puts 'did not get When: in ' + e.elements['summary'].text
         end
         # @todo fix events that start and end in this period
-        # @todo fix events with no status that only start in this period (turn them on) - kettle is not coming on right now
         if status
           event_times = { event_time => status }
         else
