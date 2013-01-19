@@ -5,6 +5,7 @@ include Socket::Constants
 class LightWaveRF
 
   @config_file = nil
+  @log_file = nil
   @config = nil
 
   # Display usage info
@@ -31,6 +32,11 @@ class LightWaveRF
   # Config file getter
   def get_config_file
     @config_file || File.expand_path('~') + '/lightwaverf-config.yml'
+  end
+
+  # Log file getter
+  def get_log_file
+    @log_file || File.expand_path('~') + '/lightwaverf.log'
   end
 
   # Get the config file, create it if it does not exist
@@ -141,11 +147,26 @@ class LightWaveRF
     end
   end
 
-  def energy
+  def energy note = '', debug = false
+    debug && ( p 'energy: ' + note )
     data = self.raw '666,@?'
+    debug && ( p data )
     # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match data # ruby 1.9 only?
     match = /W=(\d+),(\d+),(\d+),(\d+)/.match data
-    match and { 'usage' => match[1], 'max' => match[2], 'today' => match[3], 'yesterday' => match[4] }
+    debug && ( p match )
+    if match
+      data = { 'message' => { 'usage' => match[1].to_i, 'max' => match[2].to_i, 'today' => match[3].to_i }}
+      data['timestamp'] = Time.now.to_s
+      if note
+        data['message']['annotation'] = { 'title' => '', 'text' => note.to_s }
+      end
+      debug && ( p data )
+      require 'json'
+      File.open( self.get_log_file, 'a' ) do |f|
+        f.write( data.to_json + "\n" )
+      end
+      data['message']
+    end
   end
 
   def raw command
@@ -195,7 +216,7 @@ class LightWaveRF
     doc = REXML::Document.new response.body
     now = Time.now.strftime '%H:%M'
     interval_end_time = ( Time.now + interval.to_i * 60 ).strftime '%H:%M'
-    triggered = 0
+    triggered = []
     doc.elements.each 'feed/entry' do | e |
       command = /(\w+) (\w+)( (\w+))?/.match e.elements['title'].text # look for events with a title like 'lounge light on'
       if command
@@ -221,12 +242,15 @@ class LightWaveRF
             debug && ( p 'so going to turn the ' + room + ' ' + device + ' ' + s.to_s + ' now!' )
             self.send room, device, s.to_s
             sleep 1
-            triggered += 1
+            triggered << [ room, device, s ]
           end
         end
       end
     end
-    triggered.to_s + " events triggered"
+    triggered.length.to_s + " events triggered"
+    if triggered.length
+      self.energy triggered.to_s, debug
+    end
   end
 end
 

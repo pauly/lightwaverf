@@ -71,8 +71,8 @@ app.configure(function() {
 app.get( '/', routes.index );
 app.get( '/login', routes.login );
 app.get( '/automation', ensureAuthenticated, automation.index );
-app.get( '/automation/:room/:device?/:status?', ensureAuthenticated, automation.device );
 app.get( '/automation/:room/:device/:status?.js', ensureAuthenticated, automation.json );
+// app.get( '/automation/:room/:device?/:status?', ensureAuthenticated, automation.device );
 
 // GET /auth/twitter
 //   Use passport.authenticate() as route middleware to authenticate the

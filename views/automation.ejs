@@ -16,13 +16,13 @@
             <dt><a href="/automation/<%= room %>/"><%= room %></a></dt>
             <dd style="display: none">
               <dl>
-              <% for ( var device in config.room[room] ) { %>
-                <dt><%= device %></dt>
+              <% for ( var i in config.room[room] ) { %>
+                <dt><a href="/automation/<%= room %>/<%= config.room[room][i] %>/"><%= config.room[room][i] %></a></dt>
                 <dd style="display: none">
-                  Turn <%= room %> <%= device %>
-                  <a class="ajax" href="/automation/<%= room %>/<%= device %>/on.js">on</a>
+                  Turn <%= room %> <%= config.room[room][i] %>
+                  <a class="ajax" href="/automation/<%= room %>/<%= config.room[room][i] %>/on.js">on</a>
                   or
-                  <a class="ajax" href="/automation/<%= room %>/<%= device %>/off.js">off</a>
+                  <a class="ajax" href="/automation/<%= room %>/<%= config.room[room][i] %>/off.js">off</a>
                   here!
                 </dd>
               <% } %>
