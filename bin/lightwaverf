@@ -6,7 +6,7 @@ case ARGV[0]
   when 'sequence'
     puts LightWaveRF.new.sequence ARGV[1], ARGV[2]
   when 'energy'
-    puts LightWaveRF.new.energy ARGV[1], ARGV[2]
+    puts LightWaveRF.new.energy ARGV[1], ARGV[2], ARGV[3]
   when 'timer'
     puts LightWaveRF.new.timer ARGV[1], ARGV[2]
   else
