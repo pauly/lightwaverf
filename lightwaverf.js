@@ -2,16 +2,14 @@
  * Simple node.js utility to read instance energy usage from lightwaverf energy monitor
  * I found the original code here:
  * http://quilowhat.tumblr.com/post/21094672763/energy-monitoring-with-lightwaverf-and-node-js
- * and am tweaking it to my requirements...
- */
+ * and tweaked it to my requirements... given up using this now, 
+ * using the hit-and-run ruby instead of this permanent connection.
 var dgram = require( 'dgram' );
 var server = dgram.createSocket( 'udp4' );
 var winston = require( 'winston' );
 winston.add( winston.transports.File, { filename: '/home/pi/lightwaverf.log' } );
-// winston.remove( winston.transports.Console );
 server.on( 'message', function ( msg, rinfo ) {
   if ( /W=(\d+),(\d+),(\d+),(\d+)/.exec( msg )) {
-    // console.log( { usage: parseInt( RegExp.$1 ) } );
     winston.info( { usage: parseInt( RegExp.$1 ), max: parseInt( RegExp.$2 ), today: parseInt( RegExp.$3 ) } );
   }
 } );
