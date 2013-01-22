@@ -117,12 +117,12 @@ class LightWaveRF
   #   device: (String)
   #   state: (String)
   def send room = nil, device = nil, state = 'on', debug = false
-    debug && ( puts 'config is ' + self.get_config.to_s )
+    debug and ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config
     state = self.class.get_state state
-    if rooms[room] && device && state && rooms[room]['device'][device]
+    if rooms[room] and device and state and rooms[room]['device'][device]
       command = self.command rooms[room], device, state
-      debug && ( p 'command is ' + command )
+      debug and ( p 'command is ' + command )
       self.raw command
     else
       STDERR.puts self.usage
@@ -147,20 +147,20 @@ class LightWaveRF
     end
   end
 
-  def energy note = '', debug = false
-    debug && ( p 'energy: ' + note )
+  def energy title = nil, note = nil, debug = false
+    debug and note and ( p 'energy: ' + note )
     data = self.raw '666,@?'
-    debug && ( p data )
+    debug and ( p data )
     # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match data # ruby 1.9 only?
     match = /W=(\d+),(\d+),(\d+),(\d+)/.match data
-    debug && ( p match )
+    debug and ( p match )
     if match
       data = { 'message' => { 'usage' => match[1].to_i, 'max' => match[2].to_i, 'today' => match[3].to_i }}
       data['timestamp'] = Time.now.to_s
       if note
-        data['message']['annotation'] = { 'title' => '', 'text' => note.to_s }
+        data['message']['annotation'] = { 'title' => title.to_s, 'text' => note.to_s }
       end
-      debug && ( p data )
+      debug and ( p data )
       require 'json'
       File.open( self.get_log_file, 'a' ) do |f|
         f.write( data.to_json + "\n" )
@@ -207,7 +207,7 @@ class LightWaveRF
     require 'net/http'
     require 'rexml/document'
     url = LightWaveRF.new.get_config['calendar'] + '?singleevents=true&start-min=' + Date.today.strftime( '%Y-%m-%d' ) + '&start-max=' + Date.today.next.strftime( '%Y-%m-%d' )
-    debug && ( p url )
+    debug and ( p url )
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
     http.use_ssl = true
@@ -237,9 +237,9 @@ class LightWaveRF
           event_times = { event_time => 'on', event_end_time => 'off' }
         end
         event_times.each do | t, s |
-          debug && ( p e.elements['title'].text + ' - ' + now + ' < ' + t + ' < ' + interval_end_time + ' ?' )
-          if t >= now && t < interval_end_time
-            debug && ( p 'so going to turn the ' + room + ' ' + device + ' ' + s.to_s + ' now!' )
+          debug and ( p e.elements['title'].text + ' - ' + now + ' < ' + t + ' < ' + interval_end_time + ' ?' )
+          if t >= now and t < interval_end_time
+            debug and ( p 'so going to turn the ' + room + ' ' + device + ' ' + s.to_s + ' now!' )
             self.send room, device, s.to_s
             sleep 1
             triggered << [ room, device, s ]
@@ -248,9 +248,14 @@ class LightWaveRF
       end
     end
     triggered.length.to_s + " events triggered"
-    if triggered.length
-      self.energy triggered.to_s, debug
+    title = nil
+    text = nil
+    if triggered.length > 0
+      debug and ( p triggered.length.to_s + ' events so annotating energy log too...' )
+      title = 'timer'
+      text = triggered.map { |e| e.join " " }.join ", "
     end
+    self.energy title, text, debug
   end
 end
 
