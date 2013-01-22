@@ -41,8 +41,9 @@
     var start_date = raw_data[0][0];
     energy_data.addRows( raw_data.map( function ( e ) {
       if ( e[0] !== start_date ) e[0] += start_date;
-      var d = '' + e[0];
-      e[0] = new Date( '20' + d[0] + d[1] + '-' + d[2] + d[3] + '-' + d[4] + d[5] + ' ' + d[6] + d[7] + ':' + d[8] + d[9] );
+      e[0] = new Date( 1000 * e[0] ); // as it is now a timestamp
+      // var d = '' + e[0];
+      // e[0] = new Date( '20' + d[0] + d[1] + '-' + d[2] + d[3] + '-' + d[4] + d[5] + ' ' + d[6] + d[7] + ':' + d[8] + d[9] );
       e[1] = e[1] * 10;
       e[2] = e[2] || '';
       e[3] = e[3] || '';
