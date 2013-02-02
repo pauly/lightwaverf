@@ -40,8 +40,8 @@ The first time you try to pair a device from the computer look out for the "pair
     yes | sudo apt-get install git-core ruby
     git clone git@github.com:pauly/lightwaverf.git # you don't need much from here, but have the whole source anyway
     cd lightwaverf && crontab cron.tab # set up the timer and energy monitor
-    sudo gem install lightwaverf # or build the gem locally if *say* rubygems.org is down! see below
-    cp lightwaverf-config.yml && vi ~/lightwaverf-config.yml # and put in your rooms and devices
+    sudo gem install lightwaverf # or build the gem locally, see below
+    cp lightwaverf-config.yml ~ && vi ~/lightwaverf-config.yml # and put in your rooms and devices
     lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
 ## how to build the gem from the source
