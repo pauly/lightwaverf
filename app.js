@@ -21,31 +21,32 @@ passport.deserializeUser(function(obj, done) {
   done(null, obj);
 });
 
+if ( ! ( process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET )) {
+  console.error( 'you need TWITTER_CONSUMER_KEY and TWITTER_CONSUMER_SECRET in your env vars. see config/default.sh.sample' );
+}
 // Use the TwitterStrategy within Passport.
 //   Strategies in passport require a `verify` function, which accept
 //   credentials (in this case, a token, tokenSecret, and Twitter profile), and
 //   invoke a callback with a user object.
-passport.use(new TwitterStrategy({
-    consumerKey: process.env.TWITTER_CONSUMER_KEY,
-    consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
-    // callbackURL: "http://127.0.0.1:3000/auth/twitter/callback"
-    callbackURL: 'http://pi.clarkeology.com:3000/auth/twitter/callback'
-  },
-  function(token, tokenSecret, profile, done) {
-    // asynchronous verification, for effect...
-    process.nextTick(function () {
-      
-      // To keep the example simple, the user's Twitter profile is returned to
-      // represent the logged-in user.  In a typical application, you would want
-      // to associate the Twitter account with a user record in your database,
-      // and return that user instead.
-      return done(null, profile);
-    });
-  }
-));
-
-
-
+  passport.use( new TwitterStrategy( {
+      consumerKey: process.env.TWITTER_CONSUMER_KEY,
+      consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
+      // callbackURL: "http://127.0.0.1:3000/auth/twitter/callback"
+      callbackURL: 'http://pi.clarkeology.com:3000/auth/twitter/callback'
+    },
+    function(token, tokenSecret, profile, done) {
+      // asynchronous verification, for effect...
+      process.nextTick(function () {
+        
+        // To keep the example simple, the user's Twitter profile is returned to
+        // represent the logged-in user.  In a typical application, you would want
+        // to associate the Twitter account with a user record in your database,
+        // and return that user instead.
+        return done(null, profile);
+      });
+    }
+  ));
+// }
 
 var app = express();
 
@@ -79,28 +80,29 @@ app.get( '/automation/:room/:device/:status?.js', ensureAuthenticated, automatio
 //   request.  The first step in Twitter authentication will involve redirecting
 //   the user to twitter.com.  After authorization, the Twitter will redirect
 //   the user back to this application at /auth/twitter/callback
-app.get('/auth/twitter',
-  passport.authenticate('twitter'),
-  function(req, res){
+app.get( '/auth/twitter',
+  passport.authenticate( 'twitter' ),
+  function( req, res ) {
     // The request will be redirected to Twitter for authentication, so this
     // function will not be called.
-  });
+  }
+);
 
 // GET /auth/twitter/callback
 //   Use passport.authenticate() as route middleware to authenticate the
 //   request.  If authentication fails, the user will be redirected back to the
 //   login page.  Otherwise, the primary route function function will be called,
 //   which, in this example, will redirect the user to the home page.
-app.get('/auth/twitter/callback', 
-  passport.authenticate('twitter', { failureRedirect: '/login' }),
-  function(req, res) {
-    res.redirect('/');
-  });
+app.get( '/auth/twitter/callback', 
+  passport.authenticate( 'twitter', { failureRedirect: '/login' } ),
+  function( req, res ) {
+    res.redirect( req.session.page || '/' );
+} );
 
-app.get('/logout', function(req, res){
-  req.logout();
-  res.redirect('/');
-});
+app.get( '/logout', function( req, res ) {
+  req.logout( );
+  res.redirect( '/' );
+} );
 
 app.listen( process.env.port || 3000 );
 
@@ -109,7 +111,9 @@ app.listen( process.env.port || 3000 );
 //   the request is authenticated (typically via a persistent login session),
 //   the request will proceed.  Otherwise, the user will be redirected to the
 //   login page.
-function ensureAuthenticated(req, res, next) {
-  if (req.isAuthenticated()) { return next(); }
-  res.redirect('/login')
+function ensureAuthenticated( req, res, next ) {
+  req.session.page = req.route.path;
+  if ( req.isAuthenticated( )) { return next( ); }
+  // res.redirect( '/login' );
+  res.redirect( '/auth/twitter' );
 }
