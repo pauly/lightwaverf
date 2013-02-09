@@ -1,0 +1,2 @@
+export TWITTER_CONSUMER_KEY=foo # get it from dev.twitter.com/apps
+export TWITTER_CONSUMER_SECRET=foo # get it from dev.twitter.com/apps
