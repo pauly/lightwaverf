@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'lightwaverf'
-  s.version     = '0.2.1'
-  s.date        = '2013-02-01'
+  s.version     = '0.2.3'
+  s.date        = Time.now.strftime '%Y-%m-%d'
   s.summary     = 'Home automation'
   s.description = 'Interact with lightwaverf wifi link from code or the command line. Control your lights, heating, sockets etc. Also set up timers using a google calendar and log energy usage.'
   s.authors     = [ 'Paul Clarke' ]

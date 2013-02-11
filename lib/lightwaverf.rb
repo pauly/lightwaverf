@@ -78,6 +78,9 @@ class LightWaveRF
   # Arguments:
   #   state: (String)
   def self.get_state state = 'on'
+    if /^\d+$/.match state.to_s
+    	state = state.to_i
+    end
     case state
       when 'off'
         state = 'F0'
