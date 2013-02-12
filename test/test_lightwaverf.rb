@@ -22,6 +22,17 @@ class LightWaveRFTest < Test::Unit::TestCase
     assert_equal 'FdP24', LightWaveRF.get_state( 75 )
   end
 
+  def test_state_percentage_strings
+    assert_equal 'FdP3', LightWaveRF.get_state( '10' )
+    assert_equal 'FdP8', LightWaveRF.get_state( '25' )
+    assert_equal 'FdP16', LightWaveRF.get_state( '50' )
+    assert_equal 'FdP24', LightWaveRF.get_state( '75' )
+    assert_equal 'FdP3', LightWaveRF.get_state( '10%' )
+    assert_equal 'FdP8', LightWaveRF.get_state( '25%' )
+    assert_equal 'FdP16', LightWaveRF.get_state( '50%' )
+    assert_equal 'FdP24', LightWaveRF.get_state( '75%' )
+  end
+
   def test_config_file
     obj = LightWaveRF.new
     obj.set_config_file '/tmp/foo.yml'
