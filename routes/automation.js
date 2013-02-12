@@ -1,12 +1,14 @@
 var sys = require( 'sys' );
 var exec = require( 'child_process' ).exec;
 var fs = require( 'fs' );
+
 var cmd = function ( param ) {
   return '/usr/local/bin/lightwaverf ' + param.room + ' ' + param.device + ' ' + ( param.status || 'on' ) + ' true';
 };
+
 var ok = function ( user ) {
   console.log( 'ok? user is ' + user.username );
-  return user.username === 'pauly'; 
+  return user.username === process.env.TWITTER_USER;
 }
 
 exports.index = function( req, res ) {

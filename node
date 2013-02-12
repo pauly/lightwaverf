@@ -1,6 +1,9 @@
 #!/bin/sh
 
 # init.d file
+# so copy this file to /etc/init.d/ and restart your pi
+# requires supervisor and node
+# see https://github.com/pauly/lightwaverf
 
 DAEMON="/usr/local/bin/supervisor"
 ROOT_DIR="/home/pi/lightwaverf"
