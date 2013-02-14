@@ -215,7 +215,11 @@ class LightWaveRF
     debug and ( p url )
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
-    http.use_ssl = true
+    begin
+      http.use_ssl = true
+    rescue
+      debug && ( p 'cannot use ssl' )
+    end
     request = Net::HTTP::Get.new parsed_url.request_uri
     response = http.request request
     doc = REXML::Document.new response.body
