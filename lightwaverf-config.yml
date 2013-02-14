@@ -1,31 +1,48 @@
----
-host: 192.168.1.64
-calendar: 'https://www.google.com/calendar/feeds/sgvkej0k4gdv59eu3adi6gddr8%40group.calendar.google.com/private-649b00dd25c2f90b7cfceb519b8ac2b5/basic'
-room:
-  our:
+--- 
+sequence: 
+  lights: 
+  - - our
+    - light
+    - "on"
+  - - our
+    - lights
+    - "on"
+room: 
+- name: our
+  device: 
   - light
   - lights
   - kettle
   - tv
-  dining:
+- name: dining
+  device:
   - light
   - lights
-  harry:
+- name: harry
+  device:
   - light
-  tommy:
+- name: tommy
+  device:
   - light
-  lounge:
+- name: lounge
+  device:
   - light
   - lights
-  kitchen:
+- name: kitchen
+  device:
   - kettle
   - toaster
-  cloakroom:
+- name: cloakroom
+  device:
   - light
-  hall:
+- name: hall
+  device:
   - light
-  landing:
+- name: landing
+  device:
   - light
+host: 192.168.1.64
+calendar: 'https://www.google.com/calendar/feeds/sgvkej0k4gdv59eu3adi6gddr8%40group.calendar.google.com/private-649b00dd25c2f90b7cfceb519b8ac2b5/basic'
 sequence:
   bed:
   - - our

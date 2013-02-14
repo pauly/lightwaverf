@@ -11,7 +11,7 @@ class LightWaveRF
   # Display usage info
   def usage
     rooms = self.class.get_rooms self.get_config
-    'usage: lightwaverf ' + rooms.keys.first + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
+    'usage: lightwaverf ' + rooms.values.first['name'] + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
   end
 
   # Display help
@@ -19,8 +19,8 @@ class LightWaveRF
     help = self.usage + "\n"
     help += "your rooms, devices, and sequences, as defined in " + self.get_config_file + ":\n\n"
     help += YAML.dump self.get_config['room']
-    room = self.get_config['room'].keys.last
-    device = self.get_config['room'][room].last
+    room = self.get_config['room'].last['name']
+    device = self.get_config['room'].last['device'].last
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
@@ -44,7 +44,7 @@ class LightWaveRF
     if ! @config
       if ! File.exists? self.get_config_file
         File.open( self.get_config_file, 'w' ) do | handle |
-          handle.write YAML.dump( { 'host' => '192.168.0.14', 'room' => { 'our' => [ 'light', 'lights' ] }, 'sequence' => { 'lights' => [ [ 'our', 'light', 'on' ], [ 'our', 'lights', 'on' ] ] }} )
+          handle.write YAML.dump( { 'host' => '192.168.1.64', 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ], 'sequence' => { 'lights' => [ [ 'our', 'light', 'on' ], [ 'our', 'lights', 'on' ] ] }} )
         end
       end
       @config = YAML.load_file self.get_config_file
@@ -53,15 +53,17 @@ class LightWaveRF
   end
 
   # Get a cleaned up version of the rooms and devices from the config file
-  def self.get_rooms config = { 'room' => { }}
+  def self.get_rooms config = { 'room' => [ ]}, debug = false
     rooms = { }
     r = 1
-    config['room'].each do | name, devices |
-      rooms[name] = { 'id' => 'R' + r.to_s, 'name' => name, 'device' => { }}
+    config['room'].each do | room |
+      debug and ( puts room['name'] + ' = R' + r.to_s )
+      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }}
       d = 1
-      devices.each do | device |
+      room['device'].each do | device |
         # @todo possibly need to complicate this to get a device name back in here
-        rooms[name]['device'][device] = 'D' + d.to_s
+        debug and ( puts ' - ' + device + ' = D' + d.to_s )
+        rooms[room['name']]['device'][device] = 'D' + d.to_s
         d += 1
       end
       r += 1
@@ -121,7 +123,7 @@ class LightWaveRF
   #   state: (String)
   def send room = nil, device = nil, state = 'on', debug = false
     debug and ( puts 'config is ' + self.get_config.to_s )
-    rooms = self.class.get_rooms self.get_config
+    rooms = self.class.get_rooms self.get_config, debug
     state = self.class.get_state state
     if rooms[room] and device and state and rooms[room]['device'][device]
       command = self.command rooms[room], device, state

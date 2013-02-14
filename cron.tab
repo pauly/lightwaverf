@@ -1,4 +1,4 @@
 */5 * * * * /home/pi/lightwaverf/summarise-data.rb > /tmp/summarise-data.out 2>&1
-*/5 * * * * /usr/local/bin/lightwaverf timer 5 true > /tmp/timer.out 2>&1
+# */5 * * * * /usr/local/bin/lightwaverf timer 5 true > /tmp/timer.out 2>&1
 * * * * * /usr/local/bin/lightwaverf energy > /tmp/energy.out 2>&1
 0 * * * * tail -1440 /home/pi/lightwaverf.log > /tmp/lightwaverf2.log && mv /tmp/lightwaverf2.log /home/pi/lightwaverf.log
