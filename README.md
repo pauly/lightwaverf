@@ -15,16 +15,16 @@ This code unofficial an unaffiliated, please let me know how you get on http://w
 You need a ymlconfig file in your home directory. If you don't have one the code will create one the first time it runs.
 
     host:
-      192.168.0.14
-    room:
-      our:
-        - light
-        - lights
-        - kettle
-        - tv
-      dining:
-        - light
-        - lights
+      192.168.1.64
+    room: 
+    - name: our
+      device: 
+      - light
+      - lights
+    - name: dining
+      device:
+      - light
+      - lights
 
 That needs to be valid yml so the spacing etc is important - best check out the sample and edit that. I will add a configurator soon.
 
