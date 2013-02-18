@@ -13,21 +13,19 @@ var TwitterStrategy = require('passport-twitter').Strategy;
 //   the user by ID when deserializing.  However, since this example does not
 //   have a database of user records, the complete Twitter profile is serialized
 //   and deserialized.
-passport.serializeUser(function(user, done) {
-  done(null, user);
-});
+passport.serializeUser( function( user, cb ) {
+  cb( null, user );
+} );
 
-passport.deserializeUser(function(obj, done) {
-  done(null, obj);
-});
+passport.deserializeUser( function( obj, cb ) {
+  cb( null, obj );
+} );
 
-if ( ! ( process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET )) {
-  console.error( 'you need TWITTER_CONSUMER_KEY and TWITTER_CONSUMER_SECRET in your env vars. see config/default.sh.sample' );
-}
 // Use the TwitterStrategy within Passport.
 //   Strategies in passport require a `verify` function, which accept
 //   credentials (in this case, a token, tokenSecret, and Twitter profile), and
 //   invoke a callback with a user object.
+if ( process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET ) {
   passport.use( new TwitterStrategy( {
       consumerKey: process.env.TWITTER_CONSUMER_KEY,
       consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
@@ -46,7 +44,7 @@ if ( ! ( process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET
       });
     }
   ));
-// }
+}
 
 var app = express();
 
@@ -113,7 +111,13 @@ app.listen( process.env.port || 3000 );
 //   login page.
 function ensureAuthenticated( req, res, next ) {
   req.session.page = req.route.path;
-  if ( req.isAuthenticated( )) { return next( ); }
+  if ( ! ( process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET )) {
+    console.error( 'you need TWITTER_CONSUMER_KEY and TWITTER_CONSUMER_SECRET in your env vars. see config/default.sh.sample' );
+    return next( );
+  }
+  if ( req.isAuthenticated( )) {
+    return next( );
+  }
   // res.redirect( '/login' );
   res.redirect( '/auth/twitter' );
 }
