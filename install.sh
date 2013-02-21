@@ -1,6 +1,8 @@
 sudo apt-get update
 sudo apt-get upgrade
-# sudo apt-get install git-core ruby
+sudo apt-get install git-core ruby cnetworkmanager
+ssh-keygen -t rsa -C pauly@clarkeology.com
+vi ~/.ssh/id_rsa.pub # and paste into https://github.com/settings/ssh
 git clone git://github.com/pauly/lightwaverf.git # or git clone git@github.com:pauly/lightwaverf.git
 cd lightwaverf/
 crontab cron.tab
