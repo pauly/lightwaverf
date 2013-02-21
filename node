@@ -2,10 +2,10 @@
 
 # init.d file
 # so copy this file to /etc/init.d/ and restart your pi
-# requires supervisor and node
+# requires node
 # see https://github.com/pauly/lightwaverf
 
-DAEMON="/usr/local/bin/supervisor"
+DAEMON="/usr/local/bin/node"
 ROOT_DIR="/home/pi/lightwaverf"
 SERVER="$ROOT_DIR/app.js"
 LOG_FILE="$ROOT_DIR/app.js.log"
