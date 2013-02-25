@@ -109,7 +109,7 @@ class LightWaveRF
   #   state: (String)
   def command room, device, state
     # @todo get the device name in here...
-   '666,!' + room['id'] + room['device'][device] + state + '|' + room['name'] + ' ' + room['id'] + '|via @pauly'
+   '666,!' + room['id'] + room['device'][device] + state + '|' + room['name'] + ' ' + device + ' ' + state + '|via @pauly'
   end
 
   # Turn one of your devices on or off
@@ -128,7 +128,8 @@ class LightWaveRF
     if rooms[room] and device and state and rooms[room]['device'][device]
       command = self.command rooms[room], device, state
       debug and ( p 'command is ' + command )
-      self.raw command
+      data = self.raw command
+      debug and ( p 'response is ' + data )
     else
       STDERR.puts self.usage
     end
