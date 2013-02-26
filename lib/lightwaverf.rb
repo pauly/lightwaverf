@@ -52,6 +52,98 @@ class LightWaveRF
     @config
   end
 
+  # Update the LightWaveRF Gem config file from the LightWaveRF Host server
+  #
+  # Example:
+  #   >> LightWaveRF.new.update_config 'name@example.com', '1234'
+  #
+  # Arguments:
+  #   email: (String)
+  #   pin: (String)
+  #   debug: (Boolean)
+  #
+  # Credits:
+  #   wonko - http://lightwaverfcommunity.org.uk/forums/topic/querying-configuration-information-from-the-lightwaverf-website/
+  def update_config email = nil, pin = nil, debug = false
+  
+    # Login to LightWaveRF Host server
+    require 'net/http'
+    require 'uri'
+    uri = URI.parse('https://lightwaverfhost.co.uk/manager/index.php')
+    http = Net::HTTP.new(uri.host, uri.port)
+    if uri.scheme == 'https'
+        require 'net/https'
+        http.use_ssl = true
+    end
+    data = 'pin=' + pin + '&email=' + email
+    headers = {'Content-Type'=> 'application/x-www-form-urlencoded'}
+    resp, data = http.post(uri.request_uri, data, headers)
+    
+    if resp and resp.body
+      # Extract JavaScript variables from the page
+      #   var gDeviceNames = [""]
+      #   var gDeviceStatus = [""]
+      #   var gRoomNames = [""]
+      #   var gRoomStatus = [""]
+      # http://rubular.com/r/UH0H4b4afF
+      variables = Hash.new
+      resp.body.scan(/var (gDeviceNames|gDeviceStatus|gRoomNames|gRoomStatus)\s*=\s*([^;]*)/).each do |variable|
+          variables[variable[0]] = variable[1].scan(/"([^"]*)\"/)
+      end
+      debug and (p '[Info - LightWaveRF Gem] Javascript variables ' + variables.to_s)
+      
+      rooms = Array.new
+      # Rooms - gRoomNames is a collection of 8 values, or room names
+      variables['gRoomNames'].each_with_index do |(roomName), roomIndex|
+        # Room Status - gRoomStatus is a collection of 8 values indicating the status of the corresponding room in gRoomNames
+        #   A: Active
+        #   I: Inactive
+        if variables['gRoomStatus'] and variables['gRoomStatus'][roomIndex] and variables['gRoomStatus'][roomIndex][0] == 'A'
+          # Devices - gDeviceNames is a collection of 80 values, structured in blocks of ten values for each room:
+          #   Devices 1 - 6, Mood 1 - 3, All Off
+          roomDevices = Array.new
+          deviceNamesIndexStart = roomIndex*10
+          variables['gDeviceNames'][(deviceNamesIndexStart)..(deviceNamesIndexStart+5)].each_with_index do |(deviceName), deviceIndex|
+            # Device Status - gDeviceStatus is a collection of 80 values which indicate the status/type of the corresponding device in gDeviceNames
+            #   O: On/Off Switch
+            #   D: Dimmer
+            #   R: Radiator(s)
+            #   P: Open/Close
+            #   I: Inactive (i.e. not configured)
+            #   m: Mood (inactive)
+            #   M: Mood (active)
+            #   o: All Off
+            deviceStatusIndex = roomIndex*10+deviceIndex
+            if variables['gDeviceStatus'] and variables['gDeviceStatus'][deviceStatusIndex] and variables['gDeviceStatus'][deviceStatusIndex][0] != 'I'
+                roomDevices << deviceName
+            end
+          end
+          # Create a hash of the active room and active devices and add to rooms array
+          if roomName and roomDevices and roomDevices.any?
+            rooms << {'name'=>roomName,'device'=>roomDevices}
+          end
+        end
+      end
+      
+      # Update 'room' element in LightWaveRF Gem config file
+      # config['room'] is an array of hashes containing the room name and device names
+      # in the format { 'name' => 'Room Name', 'device' => ['Device 1', Device 2'] }
+      if rooms and rooms.any?
+        config = self.get_config
+        config['room'] = rooms
+        File.open( self.get_config_file, 'w' ) do | handle |
+          handle.write YAML.dump( config )
+        end
+        debug and (p '[Info - LightWaveRF Gem] Updated config with ' + rooms.size.to_s + ' room(s): ' + rooms.to_s)
+      else
+        debug and (p '[Info - LightWaveRF Gem] Unable to update config: No active rooms or devices found')
+      end
+    else
+      debug and (p '[Info - LightWaveRF Gem] Unable to update config: No response from Host server')
+    end
+    self.get_config
+  end
+
   # Get a cleaned up version of the rooms and devices from the config file
   def self.get_rooms config = { 'room' => [ ]}, debug = false
     rooms = { }
