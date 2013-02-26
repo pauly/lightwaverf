@@ -1,6 +1,6 @@
 # lightwaverf
 
-LightWaveRF wifi link communication for command line home automation - see http://www.lightwaverf.com
+LightWaveRF wifi link communication for command line home automation. A ruby gem for lightwaverf home automation. See http://www.lightwaverf.com
 
 Get a LightWaveRF wifi link http://amzn.to/V7yPPK and a remote socket http://amzn.to/RkukDo
 
@@ -12,7 +12,11 @@ No need to do anything with this repo unless you are particularly interested.
 
 This code unofficial an unaffiliated, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf
 
-You need a ymlconfig file in your home directory. If you don't have one the code will create one the first time it runs.
+You need a yml config file in your home directory, to build one type
+
+    lightwaverf configure
+
+and that will create something like
 
     host:
       192.168.1.64
@@ -26,7 +30,7 @@ You need a ymlconfig file in your home directory. If you don't have one the code
       - light
       - lights
 
-That needs to be valid yml so the spacing etc is important - best check out the sample and edit that. I will add a configurator soon.
+That needs to be valid yml so the spacing etc is important.
 
 Then "pair" your code with your device as normal, put it in pairing mode then turn the device on with the code, with commands like
 

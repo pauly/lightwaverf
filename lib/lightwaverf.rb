@@ -24,6 +24,25 @@ class LightWaveRF
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
+  # Configure, build config file
+  def configure
+    config = { 'host' => self.get_config['host'], 'calendar' => self.get_config['calendar'] }
+    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + ')'
+    host = STDIN.gets.chomp
+    if ! host.to_s.empty?
+      config['host'] = host
+    end
+    device = 'x'
+    while ! device.to_s.empty?
+      puts 'Give me the name of a room and device, two words, space separated. For example "lounge light". Just hit enter to finish'
+      if device = STDIN.gets.chomp
+        puts 'got ' + device + ' now to split this up...'
+      end
+    end
+    puts 'end of configure, config is now ' + config.to_s
+    self.put_config config
+  end
+
   # Config file setter
   def set_config_file file
     @config_file = file
@@ -39,13 +58,20 @@ class LightWaveRF
     @log_file || File.expand_path('~') + '/lightwaverf.log'
   end
 
+  def put_config config = { 'host' => '192.168.1.64', 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
+    puts 'put_config got ' + config.to_s
+    puts 'so writing ' + YAML.dump( config )
+    File.open( self.get_config_file, 'w' ) do | handle |
+      handle.write YAML.dump( config )
+    end
+  end
+
   # Get the config file, create it if it does not exist
   def get_config
     if ! @config
       if ! File.exists? self.get_config_file
-        File.open( self.get_config_file, 'w' ) do | handle |
-          handle.write YAML.dump( { 'host' => '192.168.1.64', 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ], 'sequence' => { 'lights' => [ [ 'our', 'light', 'on' ], [ 'our', 'lights', 'on' ] ] }} )
-        end
+        puts self.get_config_file + ' does not exist - copy lightwaverf-configy.yml from https://github.com/pauly/lightwaverf to your home directory or type lightwaverf configure'
+        self.put_config
       end
       @config = YAML.load_file self.get_config_file
     end
