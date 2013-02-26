@@ -32,11 +32,34 @@ class LightWaveRF
     if ! host.to_s.empty?
       config['host'] = host
     end
+    puts 'What is the address of your google calendar? (' + self.get_config['calendar'] + ')'
+    calendar = STDIN.gets.chomp
+    if ! calendar.to_s.empty?
+      config['calendar'] = calendar
+    end
     device = 'x'
     while ! device.to_s.empty?
-      puts 'Give me the name of a room and device, two words, space separated. For example "lounge light". Just hit enter to finish'
+      puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Just hit enter to finish.'
       if device = STDIN.gets.chomp
-        puts 'got ' + device + ' now to split this up...'
+        parts = device.split ' '
+        if !parts[0].to_s.empty? and !parts[1].to_s.empty?
+          new_room = parts.shift
+          if ! config['room']
+            config['room'] = [ ]
+          end
+          found = false
+          config['room'].each do | room |
+            if room['name'] == new_room
+              room['device'] = parts
+              found = true
+            end
+            p 'so now room is ' + room.to_s
+          end
+          if ! found
+            config['room'].push 'name' => new_room, 'device' => parts
+          end
+          puts 'added ' + parts.to_s + ' to ' + new_room
+        end
       end
     end
     puts 'end of configure, config is now ' + config.to_s
