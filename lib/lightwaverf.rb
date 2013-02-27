@@ -24,9 +24,12 @@ class LightWaveRF
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
-  # Configure, build config file
-  def configure
-    config = { 'host' => self.get_config['host'], 'calendar' => self.get_config['calendar'] }
+  # Configure, build config file. Interactive command line stuff
+  #
+  # Arguments:
+  #   debug: (Boolean
+  def configure debug = false
+    config = self.get_config
     puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + ')'
     host = STDIN.gets.chomp
     if ! host.to_s.empty?
@@ -39,7 +42,7 @@ class LightWaveRF
     end
     device = 'x'
     while ! device.to_s.empty?
-      puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Just hit enter to finish.'
+      puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Enter a blank line to finish.'
       if device = STDIN.gets.chomp
         parts = device.split ' '
         if !parts[0].to_s.empty? and !parts[1].to_s.empty?
@@ -53,16 +56,16 @@ class LightWaveRF
               room['device'] = parts
               found = true
             end
-            p 'so now room is ' + room.to_s
+            debug and ( p 'so now room is ' + room.to_s )
           end
           if ! found
             config['room'].push 'name' => new_room, 'device' => parts
           end
-          puts 'added ' + parts.to_s + ' to ' + new_room
+          debug and ( p 'added ' + parts.to_s + ' to ' + new_room )
         end
       end
     end
-    puts 'end of configure, config is now ' + config.to_s
+    debug and ( p 'end of configure, config is now ' + config.to_s )
     self.put_config config
   end
 
