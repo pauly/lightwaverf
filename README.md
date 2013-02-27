@@ -78,5 +78,9 @@ Not sure how stable it is but there is a file called "node" in the repo that you
 
 If you want to improve any of my docs or code then please fork this and send me a pull request and I'll merge it in.
 
+## history
+
+  * v 0.3 changed the format of the config file, adding configure option, and loading config from lightwavehost.co.uk
+
 ## thanks
 thanks to everyone in the lightwaverf community hackers forum http://lightwaverfcommunity.org.uk/forums/forum/lightwaverf-hackers/
