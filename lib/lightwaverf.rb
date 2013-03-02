@@ -256,6 +256,21 @@ class LightWaveRF
    '666,!' + room['id'] + room['device'][device] + state + '|' + room['name'] + ' ' + device + ' ' + state + '|via @pauly'
   end
 
+  # Set the Time Zone on the LightWaveRF WiFi Link
+  #
+  # Example:
+  #   >> LightWaveRF.new.timezone
+  #
+  # Arguments:
+  #   debug: (Boolean)
+  def timezone debug = false
+    command = '666,!FzP' + (Time.now.gmt_offset/60/60).to_s
+    debug and ( puts '[Info - LightWaveRF] timezone: command is ' + command )
+    data = self.raw command
+    debug and ( puts '[Info - LightWaveRF] timezone: response is ' + data )
+    return (data == "666,OK\r\n")
+  end
+  
   # Turn one of your devices on or off
   #
   # Example:
@@ -327,7 +342,6 @@ class LightWaveRF
     listener = UDPSocket.new
     # Add broadcast socket options if necessary
     if (host == '255.255.255.255')
-      p 'Broadcasting  UDP Command'
       listener.setsockopt(Socket::SOL_SOCKET, Socket::SO_BROADCAST, true)
     end
     if listener
