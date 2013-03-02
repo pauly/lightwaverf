@@ -30,7 +30,7 @@ class LightWaveRF
   #   debug: (Boolean
   def configure debug = false
     config = self.get_config
-    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + ')'
+    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
     host = STDIN.gets.chomp
     if ! host.to_s.empty?
       config['host'] = host
@@ -84,7 +84,7 @@ class LightWaveRF
     @log_file || File.expand_path('~') + '/lightwaverf.log'
   end
 
-  def put_config config = { 'host' => '192.168.1.64', 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
+  def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
     puts 'put_config got ' + config.to_s
     puts 'so writing ' + YAML.dump( config )
     File.open( self.get_config_file, 'w' ) do | handle |
@@ -220,6 +220,7 @@ class LightWaveRF
   # Example:
   #   >> LightWaveRF.new.state 'on' # 'F1'
   #   >> LightWaveRF.new.state 'off' # 'F0'
+  #   >> LightWaveRF.new.state 'alloff' # 'Fa'
   #
   # Arguments:
   #   state: (String)
@@ -230,6 +231,8 @@ class LightWaveRF
     case state
       when 'off'
         state = 'F0'
+      when 'alloff'
+        state = 'Fa'
       when 'on'
         state = 'F1'
       when 1..100
@@ -253,13 +256,34 @@ class LightWaveRF
   #   state: (String)
   def command room, device, state
     # @todo get the device name in here...
-   '666,!' + room['id'] + room['device'][device] + state + '|' + room['name'] + ' ' + device + ' ' + state + '|via @pauly'
+    # Command structure is <transaction number>,<Command>|<Action>|<State><cr>
+    if room and device and !device.empty? and state
+      '666,!' + room['id'] + room['device'][device] + state + '|Turn ' + room['name'] + ' ' + device + '|' + state + ' via @pauly'
+    else
+      '666,!' + room['id'] + state + '|Turn ' + room['name'] + '|' + state + ' via @pauly'
+    end      
   end
 
-  # Turn one of your devices on or off
+  # Set the Time Zone on the LightWaveRF WiFi Link
+  #
+  # Example:
+  #   >> LightWaveRF.new.timezone
+  #
+  # Arguments:
+  #   debug: (Boolean)
+  def timezone debug = false
+    command = '666,!FzP' + (Time.now.gmt_offset/60/60).to_s
+    debug and ( puts '[Info - LightWaveRF] timezone: command is ' + command )
+    data = self.raw command
+    debug and ( puts '[Info - LightWaveRF] timezone: response is ' + data )
+    return (data == "666,OK\r\n")
+  end
+  
+  # Turn one of your devices on or off or all devices in a room off
   #
   # Example:
   #   >> LightWaveRF.new.send 'our', 'light', 'on'
+  #   >> LightWaveRF.new.send 'our', '', 'off'
   #
   # Arguments:
   #   room: (String)
@@ -268,8 +292,9 @@ class LightWaveRF
   def send room = nil, device = nil, state = 'on', debug = false
     debug and ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config, debug
+    state = 'alloff' if (device.empty? and state == 'off')
     state = self.class.get_state state
-    if rooms[room] and device and state and rooms[room]['device'][device]
+    if rooms[room] and state and (state == 'Fa' || (device and rooms[room]['device'][device]))
       command = self.command rooms[room], device, state
       debug and ( p 'command is ' + command )
       data = self.raw command
@@ -321,15 +346,27 @@ class LightWaveRF
 
   def raw command
     response = nil
-    begin
-      listener = UDPSocket.new
-      listener.bind '0.0.0.0', 9761
-    rescue
-      response = "can't bind to listen for a reply"
+    # Get host address or broadcast address
+    host = self.get_config['host'] || '255.255.255.255'
+    # Create socket 
+    listener = UDPSocket.new
+    # Add broadcast socket options if necessary
+    if (host == '255.255.255.255')
+      listener.setsockopt(Socket::SOL_SOCKET, Socket::SO_BROADCAST, true)
     end
-    UDPSocket.new.send command, 0, self.get_config['host'], 9760
-    if ! response
-      response, addr = listener.recvfrom 200
+    if listener
+      # Bind socket to listen for response
+      begin
+        listener.bind '0.0.0.0',9761
+      rescue
+        response = "can't bind to listen for a reply"
+      end
+      # Broadcast command to server
+      listener.send(command, 0, host, 9760)
+      # Receive response
+      if ! response
+        response, addr = listener.recvfrom 200
+      end
       listener.close
     end
     response
