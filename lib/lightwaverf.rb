@@ -220,6 +220,7 @@ class LightWaveRF
   # Example:
   #   >> LightWaveRF.new.state 'on' # 'F1'
   #   >> LightWaveRF.new.state 'off' # 'F0'
+  #   >> LightWaveRF.new.state 'alloff' # 'Fa'
   #
   # Arguments:
   #   state: (String)
@@ -230,6 +231,8 @@ class LightWaveRF
     case state
       when 'off'
         state = 'F0'
+      when 'alloff'
+        state = 'Fa'
       when 'on'
         state = 'F1'
       when 1..100
@@ -253,7 +256,12 @@ class LightWaveRF
   #   state: (String)
   def command room, device, state
     # @todo get the device name in here...
-   '666,!' + room['id'] + room['device'][device] + state + '|' + room['name'] + ' ' + device + ' ' + state + '|via @pauly'
+    # Command structure is <transaction number>,<Command>|<Action>|<State><cr>
+    if room and device and !device.empty? and state
+      '666,!' + room['id'] + room['device'][device] + state + '|Turn ' + room['name'] + ' ' + device + '|' + state + ' via @pauly'
+    else
+      '666,!' + room['id'] + state + '|Turn ' + room['name'] + '|' + state + ' via @pauly'
+    end      
   end
 
   # Set the Time Zone on the LightWaveRF WiFi Link
@@ -271,10 +279,11 @@ class LightWaveRF
     return (data == "666,OK\r\n")
   end
   
-  # Turn one of your devices on or off
+  # Turn one of your devices on or off or all devices in a room off
   #
   # Example:
   #   >> LightWaveRF.new.send 'our', 'light', 'on'
+  #   >> LightWaveRF.new.send 'our', '', 'off'
   #
   # Arguments:
   #   room: (String)
@@ -283,8 +292,9 @@ class LightWaveRF
   def send room = nil, device = nil, state = 'on', debug = false
     debug and ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config, debug
+    state = 'alloff' if (device.empty? and state == 'off')
     state = self.class.get_state state
-    if rooms[room] and device and state and rooms[room]['device'][device]
+    if rooms[room] and state and (state == 'Fa' || (device and rooms[room]['device'][device]))
       command = self.command rooms[room], device, state
       debug and ( p 'command is ' + command )
       data = self.raw command
