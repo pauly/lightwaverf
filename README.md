@@ -12,11 +12,15 @@ No need to do anything with this repo unless you are particularly interested.
 
 This code unofficial an unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf
 
-You need a yml config file in your home directory, to build one type
+You need a yml config file in your home directory, to build one, if you have already uploaded your data to the LightwaveRF server, download this data by typing
+
+    lightwaverf update 'email@example.com' '1234'
+
+Otherwise, manually specify rooms and devices by typing
 
     lightwaverf configure
 
-and that will create something like
+and that will create something like the following. NB: the host element is optional. By leaving it out, UDP commands will be broadcast across the local network (as per the iPhone app), rather than sent directly to the WiFi Link.
 
     host:
       192.168.1.64

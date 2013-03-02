@@ -30,7 +30,7 @@ class LightWaveRF
   #   debug: (Boolean
   def configure debug = false
     config = self.get_config
-    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + ')'
+    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
     host = STDIN.gets.chomp
     if ! host.to_s.empty?
       config['host'] = host
@@ -84,7 +84,7 @@ class LightWaveRF
     @log_file || File.expand_path('~') + '/lightwaverf.log'
   end
 
-  def put_config config = { 'host' => '192.168.1.64', 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
+  def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
     puts 'put_config got ' + config.to_s
     puts 'so writing ' + YAML.dump( config )
     File.open( self.get_config_file, 'w' ) do | handle |
@@ -321,15 +321,28 @@ class LightWaveRF
 
   def raw command
     response = nil
-    begin
-      listener = UDPSocket.new
-      listener.bind '0.0.0.0', 9761
-    rescue
-      response = "can't bind to listen for a reply"
+    # Get host address or broadcast address
+    host = self.get_config['host'] || '255.255.255.255'
+    # Create socket 
+    listener = UDPSocket.new
+    # Add broadcast socket options if necessary
+    if (host == '255.255.255.255')
+      p 'Broadcasting  UDP Command'
+      listener.setsockopt(Socket::SOL_SOCKET, Socket::SO_BROADCAST, true)
     end
-    UDPSocket.new.send command, 0, self.get_config['host'], 9760
-    if ! response
-      response, addr = listener.recvfrom 200
+    if listener
+      # Bind socket to listen for response
+      begin
+        listener.bind '0.0.0.0',9761
+      rescue
+        response = "can't bind to listen for a reply"
+      end
+      # Broadcast command to server
+      listener.send(command, 0, host, 9760)
+      # Receive response
+      if ! response
+        response, addr = listener.recvfrom 200
+      end
       listener.close
     end
     response
