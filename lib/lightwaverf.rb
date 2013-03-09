@@ -35,7 +35,7 @@ class LightWaveRF
     if ! host.to_s.empty?
       config['host'] = host
     end
-    puts 'What is the address of your google calendar? (' + self.get_config['calendar'] + '). Optional!''
+    puts 'What is the address of your google calendar? (' + self.get_config['calendar'] + '). Optional!'
     calendar = STDIN.gets.chomp
     if ! calendar.to_s.empty?
       config['calendar'] = calendar

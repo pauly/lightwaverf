@@ -46,7 +46,6 @@ class LightWaveRFTest < Test::Unit::TestCase
       File.unlink file
     end
     obj.set_config_file file
-    assert /^(\d{1,3}\.){3}\d{1,3}$/.match( obj.get_config['host'] )
     assert obj.get_config['room'].length > 0
     room = obj.get_config['room'].first
     assert room['device'].length > 0
