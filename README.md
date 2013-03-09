@@ -20,10 +20,8 @@ Otherwise, manually specify rooms and devices by typing
 
     lightwaverf configure
 
-and that will create something like the following. NB: the host element is optional. By leaving it out, UDP commands will be broadcast across the local network (as per the iPhone app), rather than sent directly to the WiFi Link.
+and that will create something like the following.
 
-    host:
-      192.168.1.64
     room: 
     - name: our
       device: 
@@ -60,10 +58,10 @@ The first time you try to pair a device from the computer look out for the "pair
 Install node https://gist.github.com/stolsma/3301813 (it takes an hour or so to build node on the pi.)
 Then I built in authentication using twitter too, so that the site can be up and running and public, but you'd need to be authenticated to see the usage graphs, so to do that register an app at dev.twitter.com/apps - don't think it matters what you use for any settings but when it's done go to the oauth settings get  the consumer key and consumer secret, copy config/default.sh.sample config/default.sh and paste those values in. Then there are a couple of depencies I think so
 
-    sudo npm install -g supervisor
     npm install
 
 Then start the site with
+
     source config/default.sh && nohup node app.js &
 
 hope that works and the site would then be running on port 3000 on your pi's ip address.
