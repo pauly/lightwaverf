@@ -3,6 +3,8 @@ require 'lightwaverf'
 case ARGV[0]
   when 'help'
     puts LightWaveRF.new.help
+  when 'timezone'
+    puts LightWaveRF.new.timezone ARGV[1]
   when 'configure'
     puts LightWaveRF.new.configure
   when 'sequence'
