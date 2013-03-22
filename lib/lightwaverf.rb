@@ -59,7 +59,7 @@ class LightWaveRF
             debug and ( p 'so now room is ' + room.to_s )
           end
           if ! found
-            config['room'].push 'name' => new_room, 'device' => parts
+            config['room'].push 'name' => new_room, 'device' => parts, 'mood' => nil
           end
           debug and ( p 'added ' + parts.to_s + ' to ' + new_room )
         end
@@ -202,7 +202,7 @@ class LightWaveRF
     r = 1
     config['room'].each do | room |
       debug and ( puts room['name'] + ' = R' + r.to_s )
-      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }}
+      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'moods' => { }}
       d = 1
       room['device'].each do | device |
         # @todo possibly need to complicate this to get a device name back in here
@@ -210,6 +210,13 @@ class LightWaveRF
         rooms[room['name']]['device'][device] = 'D' + d.to_s
         d += 1
       end
+      m = 1
+      settings['mood'].each do | mood |
+        rooms[name]['mood'][mood] = 'FmP' + m.to_s
+        m += 1
+      end
+      # add 'all off' special mood
+      rooms[name]['mood']['alloff'] = 'Fa'      
       r += 1
     end
     rooms
@@ -321,7 +328,28 @@ class LightWaveRF
       end
     end
   end
-
+  
+  # Set a mood in one of your rooms
+  #
+  # Example:
+  #   >> LightWaveRF.new.mood 'living', 'movie'
+  #
+  # Arguments:
+  #   room: (String)
+  #   mood: (String)
+  def mood room = nil, mood = nil, debug = false
+    debug and (p 'Executing mood: ' + mood)
+    debug and ( puts 'config is ' + self.get_config.to_s )
+    rooms = self.class.get_rooms self.get_config
+    if rooms[room] and mood and rooms[room]['mood'][mood]
+      command = self.command rooms[room], nil, rooms[room]['mood'][mood]
+      debug and ( p 'command is ' + command )
+      self.raw command
+    else
+      STDERR.puts self.usage
+    end
+  end
+  
   def energy title = nil, note = nil, debug = false
     debug and note and ( p 'energy: ' + note )
     data = self.raw '666,@?'

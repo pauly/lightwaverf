@@ -9,6 +9,8 @@ case ARGV[0]
     puts LightWaveRF.new.configure
   when 'sequence'
     puts LightWaveRF.new.sequence ARGV[1], ARGV[2]
+  when 'mood'
+    puts LightWaveRF.new.mood ARGV[1], ARGV[2], ARGV[3]    
   when 'energy'
     puts LightWaveRF.new.energy ARGV[1], ARGV[2], ARGV[3]
   when 'timer'
