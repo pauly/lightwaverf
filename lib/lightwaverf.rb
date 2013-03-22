@@ -202,7 +202,7 @@ class LightWaveRF
     r = 1
     config['room'].each do | room |
       debug and ( puts room['name'] + ' = R' + r.to_s )
-      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'moods' => { }}
+      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'mood' => { }}
       d = 1
       room['device'].each do | device |
         # @todo possibly need to complicate this to get a device name back in here
@@ -210,13 +210,13 @@ class LightWaveRF
         rooms[room['name']]['device'][device] = 'D' + d.to_s
         d += 1
       end
-      m = 1
-      settings['mood'].each do | mood |
-        rooms[name]['mood'][mood] = 'FmP' + m.to_s
-        m += 1
+      m = 1      
+      room['mood'].each do | mood |
+	rooms[room['name']]['mood'][mood] = 'FmP' + m.to_s
+	m += 1
       end
       # add 'all off' special mood
-      rooms[name]['mood']['alloff'] = 'Fa'      
+      rooms[room['name']]['mood']['alloff'] = 'Fa'      
       r += 1
     end
     rooms
