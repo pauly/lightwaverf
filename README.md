@@ -96,11 +96,11 @@ Note that each receiving device remembers moods independent of the transmitter. 
 
 Moods are also supported as part of sequences by creating a sequence step as follows:
 
-sequence:
-  testing:
-  - - mood
-    - living
-    - movie
+    sequence:
+      testing:
+      - - mood
+        - living
+        - movie
 
 And moods are supported in google calendar timers by creating an event with the following name:
 
