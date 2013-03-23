@@ -202,18 +202,23 @@ class LightWaveRF
     r = 1
     config['room'].each do | room |
       debug and ( puts room['name'] + ' = R' + r.to_s )
-      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'mood' => { }}
+      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'mood' => { }, 'learnmood' => { }}
       d = 1
-      room['device'].each do | device |
-        # @todo possibly need to complicate this to get a device name back in here
-        debug and ( puts ' - ' + device + ' = D' + d.to_s )
-        rooms[room['name']]['device'][device] = 'D' + d.to_s
-        d += 1
+      unless room['device'].nil?
+        room['device'].each do | device |
+          # @todo possibly need to complicate this to get a device name back in here
+          debug and ( puts ' - ' + device + ' = D' + d.to_s )
+          rooms[room['name']]['device'][device] = 'D' + d.to_s
+          d += 1
+        end
       end
-      m = 1      
-      room['mood'].each do | mood |
-	rooms[room['name']]['mood'][mood] = 'FmP' + m.to_s
-	m += 1
+      m = 1
+      unless room['mood'].nil?
+        room['mood'].each do | mood |
+	  rooms[room['name']]['mood'][mood] = 'FmP' + m.to_s
+	  rooms[room['name']]['learnmood'][mood] = 'FsP' + m.to_s
+	  m += 1
+	end
       end
       # add 'all off' special mood
       rooms[room['name']]['mood']['alloff'] = 'Fa'      
@@ -242,6 +247,15 @@ class LightWaveRF
         state = 'Fa'
       when 'on'
         state = 'F1'
+      # preset dim levels
+      when 'low'
+        state = 'FdP8'
+      when 'mid'
+        state = 'FdP16'
+      when 'high'
+        state = 'FdP24'
+      when 'full'
+        state = 'FdP32'        
       when 1..100
         state = 'FdP' + ( state * 0.32 ).round.to_s
       else
@@ -323,7 +337,15 @@ class LightWaveRF
   def sequence name, debug = false
     if self.get_config['sequence'][name]
       self.get_config['sequence'][name].each do | task |
-        self.send task[0], task[1], task[2], debug
+        if task[0] == 'pause'
+          debug and ( p 'Pausing for ' + task[1].to_s + ' seconds...' ) 
+          sleep task[1]
+          debug and ( p 'Resuming...' )
+        elsif task[0] == 'mood'
+          self.mood task[1], task[2], debug
+        else
+          self.send task[0], task[1], task[2], debug          
+        end
         sleep 1
       end
     end
@@ -350,6 +372,27 @@ class LightWaveRF
     end
   end
   
+  # Learn a mood in one of your rooms
+  #
+  # Example:
+  #   >> LightWaveRF.new.learnmood 'living', 'movie'
+  #
+  # Arguments:
+  #   room: (String)
+  #   mood: (String)
+  def learnmood room = nil, mood = nil, debug = false
+    debug and (p 'Learning mood: ' + mood)
+    debug and ( puts 'config is ' + self.get_config.to_s )
+    rooms = self.class.get_rooms self.get_config
+    if rooms[room] and mood and rooms[room]['learnmood'][mood]
+      command = self.command rooms[room], nil, rooms[room]['learnmood'][mood]
+      debug and ( p 'command is ' + command )
+      self.raw command
+    else
+      STDERR.puts self.usage
+    end
+  end
+    
   def energy title = nil, note = nil, debug = false
     debug and note and ( p 'energy: ' + note )
     data = self.raw '666,@?'
@@ -442,6 +485,11 @@ class LightWaveRF
         room = command[1].to_s
         device = command[2].to_s
         status = command[4]
+        if status
+          debug and ( p 'found an event called: ' + room + ' ' + device + ' ' + status )
+        else
+          debug and ( p 'found an event called: ' + room + ' ' + device)
+        end
         timer = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)/.match e.elements['summary'].text
         if timer
           event_time = timer[2].to_s
@@ -449,19 +497,35 @@ class LightWaveRF
         else
           STDERR.puts 'did not get When: in ' + e.elements['summary'].text
         end
-        # @todo fix events that start and end in this period
-        if status
-          event_times = { event_time => status }
+	# check if a mood command
+	if room == 'mood'
+          debug and ( p 'so going to set the mood in ' + device + ' to ' + status + ' now!' )	  
+          self.mood device, status, debug
+          sleep 1
+          triggered << [ room, device, status ]
+	# or if a sequence command
+	elsif room == 'sequence'
+          debug and ( p 'so going to execute sequence ' + device + ' now!' )	  
+          self.sequence device, debug
+          sleep 1
+          triggered << [ room, device, status ]
+	# else must be a device command
         else
-          event_times = { event_time => 'on', event_end_time => 'off' }
-        end
-        event_times.each do | t, s |
-          debug and ( p e.elements['title'].text + ' - ' + now + ' < ' + t + ' < ' + interval_end_time + ' ?' )
-          if t >= now and t < interval_end_time
-            debug and ( p 'so going to turn the ' + room + ' ' + device + ' ' + s.to_s + ' now!' )
-            self.send room, device, s.to_s
-            sleep 1
-            triggered << [ room, device, s ]
+          debug and ( p 'so must be a device command' )	  
+          # @todo fix events that start and end in this period        
+          if status
+            event_times = { event_time => status }
+          else
+            event_times = { event_time => 'on', event_end_time => 'off' }
+          end
+          event_times.each do | t, s |
+            debug and ( p e.elements['title'].text + ' - ' + now + ' < ' + t + ' < ' + interval_end_time + ' ?' )
+            if t >= now and t < interval_end_time
+              debug and ( p 'so going to turn the ' + room + ' ' + device + ' ' + s.to_s + ' now!' )
+              self.send room, device, s.to_s
+              sleep 1
+              triggered << [ room, device, s ]
+            end
           end
         end
       end
