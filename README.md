@@ -68,16 +68,81 @@ hope that works and the site would then be running on port 3000 on your pi's ip 
 
 Not sure how stable it is but there is a file called "node" in the repo that you can copy into /etc/init.d/ and it should restart the server when the pi restarts. 
 
+## Mood support
+
+Moods are now supported if they are added to the lightwaverf-config.yml file as follows:
+
+    room: 
+    - name: living
+      device: 
+      - light
+      mood:
+      - movie
+      - dinner
+      
+To set a mood:
+
+    lightwaverf mood living movie
+    
+You can also execute the special 'alloff' mood to turn off all devices in that room:
+    
+    lightwaverf mood living alloff
+    
+To (re)learn a mood with the current device settings:
+
+    lightwaverf mood <room> <mood name>
+
+Note that each receiving device remembers moods independent of the transmitter. i.e. if you have setup moods using a master wall switch, or via the iPhone app, these will already be configured and just need adding to the lightwaverf-config.yml in the right order with a name
+
+Moods are also supported as part of sequences by creating a sequence step as follows:
+
+    sequence:
+      testing:
+      - - mood
+        - living
+        - movie
+
+And moods are supported in google calendar timers by creating an event with the following name:
+
+    mood living movie
+
+Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time (e.g. with the special 'alloff' mood)
+
+## Sequence support
+
+Sequences can execute a number of tasks in order, either simple device commands or setting moods, as per the following example:
+
+Note that pauses can be added (in seconds)
+
+    sequence:
+      testing:
+      - - mood
+        - living
+        - movie
+      - - pause
+        - 60
+      - - mood
+        - living
+        - alloff
+
 ## how to set up the google calendar timers
   * make yourself a google calendar http://www.google.com/calendar
     * click on my calendars
     * click on "create a new calendar"
-    * add some events called "lounge light
+    * add some events called "lounge light"
     * put the private address of the calendar into the lightwaverf-config.yml file
     * start the cron jobs with
 
     crontab cron.tab
+    
+You can also set moods using the calendar by creating an event with the following syntax:
 
+    mood living movie
+    
+And you can execute sequences using the calendar by creating an event with the following syntax (where "testing" is the name of the sequence):
+
+    sequence testing
+    
 If you want to improve any of my docs or code then please fork this and send me a pull request and I'll merge it in.
 
 ## history
