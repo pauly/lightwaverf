@@ -114,16 +114,16 @@ Sequences can execute a number of tasks in order, either simple device commands 
 
 Note that pauses can be added (in seconds)
 
-sequence:
-  testing:
-  - - mood
-    - living
-    - movie
-  - - pause
-    - 60
-  - - mood
-    - living
-    - alloff
+    sequence:
+      testing:
+      - - mood
+        - living
+        - movie
+      - - pause
+        - 60
+      - - mood
+        - living
+        - alloff
 
 ## how to set up the google calendar timers
   * make yourself a google calendar http://www.google.com/calendar
