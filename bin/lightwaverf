@@ -14,7 +14,7 @@ case ARGV[0]
   when 'timer'
     puts LightWaveRF.new.timer ARGV[1], ARGV[2]
   when 'update'
-    puts LightWaveRF.new.update_config ARGV[1], ARGV[2]
+    puts LightWaveRF.new.update_config ARGV[1], ARGV[2], ARGV[3]
   else
     LightWaveRF.new.send ARGV[0], ARGV[1], ARGV[2], ARGV[3]
 end

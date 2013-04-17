@@ -10,7 +10,7 @@ Then this code is available as a gem, so:
 
 No need to do anything with this repo unless you are particularly interested.
 
-This code unofficial an unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf
+This code unofficial an unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf / @pauly
 
 You need a yml config file in your home directory, to build one, if you have already uploaded your data to the LightwaveRF server, download this data by typing
 
@@ -43,36 +43,37 @@ The first time you try to pair a device from the computer look out for the "pair
 ## how to install on your raspberry pi
     sudo apt-get update
     sudo apt-get upgrade
+    sudo apt-get install git-core gem
     git clone git://github.com/pauly/lightwaverf.git # you don't need much from here, but have the whole source anyway
     cd lightwaverf && crontab cron.tab # set up the timer and energy monitor
     sudo gem install lightwaverf # or build the gem locally, see below
-    cp lightwaverf-config.yml ~ && vi ~/lightwaverf-config.yml # and put in your ip address, calendar, rooms, and devices
+    lightwaverf configure # or lightwaverf update
     lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
 ## how to build the gem from the source
     gem build lightwaverf.gemspec 
-    sudo gem install ./lightwaverf-0.2.1.gem # or whatever the latest version is
+    sudo gem install ./lightwaverf-0.3.2.gem # or whatever the latest version is
 
 ## how to install the website in this repo on a raspberry pi
 
-Install node https://gist.github.com/stolsma/3301813 (it takes an hour or so to build node on the pi.)
-Then I built in authentication using twitter too, so that the site can be up and running and public, but you'd need to be authenticated to see the usage graphs, so to do that register an app at dev.twitter.com/apps - don't think it matters what you use for any settings but when it's done go to the oauth settings get  the consumer key and consumer secret, copy config/default.sh.sample config/default.sh and paste those values in. Then there are a couple of depencies I think so
+  * Install node https://gist.github.com/stolsma/3301813 (it takes an hour or so to build node on the pi.)
+  * Then I built in authentication using twitter too, so that the site can be up and running and public, but you'd need to be authenticated to see the usage graphs, so to do that register an app at dev.twitter.com/apps - don't think it matters what you use for any settings but when it's done go to the oauth settings get  the consumer key and consumer secret, copy config/default.sh.sample config/default.sh and paste those values in. Then there are a couple of depencies I think so
 
     npm install
 
-Then start the site with
+  * Then start the site with
 
     source config/default.sh && nohup node app.js &
 
-hope that works and the site would then be running on port 3000 on your pi's ip address.
+  * hope that works and the site would then be running on port 3000 on your pi's ip address.
 
-Not sure how stable it is but there is a file called "node" in the repo that you can copy into /etc/init.d/ and it should restart the server when the pi restarts. 
+  * Not sure how stable it is but there is a file called "node" in the repo that you can copy into /etc/init.d/ and it should restart the server when the pi restarts. 
 
 ## how to set up the google calendar timers
   * make yourself a google calendar http://www.google.com/calendar
     * click on my calendars
     * click on "create a new calendar"
-    * add some events called "lounge light
+    * add some events called "lounge light"
     * put the private address of the calendar into the lightwaverf-config.yml file
     * start the cron jobs with
 

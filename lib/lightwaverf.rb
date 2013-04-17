@@ -107,7 +107,7 @@ class LightWaveRF
   # Update the LightWaveRF Gem config file from the LightWaveRF Host server
   #
   # Example:
-  #   >> LightWaveRF.new.update_config 'name@example.com', '1234'
+  #   >> LightWaveRF.new.update_config name@example.com, 1234
   #
   # Arguments:
   #   email: (String)
@@ -121,15 +121,15 @@ class LightWaveRF
     # Login to LightWaveRF Host server
     require 'net/http'
     require 'uri'
-    uri = URI.parse('https://lightwaverfhost.co.uk/manager/index.php')
-    http = Net::HTTP.new(uri.host, uri.port)
+    uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'
+    http = Net::HTTP.new uri.host, uri.port
     if uri.scheme == 'https'
         require 'net/https'
         http.use_ssl = true
     end
     data = 'pin=' + pin + '&email=' + email
-    headers = {'Content-Type'=> 'application/x-www-form-urlencoded'}
-    resp, data = http.post(uri.request_uri, data, headers)
+    headers = { 'Content-Type'=> 'application/x-www-form-urlencoded '}
+    resp, data = http.post uri.request_uri, data, headers
     
     if resp and resp.body
       # Extract JavaScript variables from the page
@@ -144,7 +144,7 @@ class LightWaveRF
       end
       debug and (p '[Info - LightWaveRF Gem] Javascript variables ' + variables.to_s)
       
-      rooms = Array.new
+      rooms = [ ]
       # Rooms - gRoomNames is a collection of 8 values, or room names
       variables['gRoomNames'].each_with_index do |(roomName), roomIndex|
         # Room Status - gRoomStatus is a collection of 8 values indicating the status of the corresponding room in gRoomNames
@@ -400,7 +400,7 @@ class LightWaveRF
     begin
       http.use_ssl = true
     rescue
-      debug && ( p 'cannot use ssl' )
+      debug and ( p 'cannot use ssl' )
     end
     request = Net::HTTP::Get.new parsed_url.request_uri
     response = http.request request
