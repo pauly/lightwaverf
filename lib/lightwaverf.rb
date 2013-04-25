@@ -30,11 +30,11 @@ class LightWaveRF
   #   debug: (Boolean
   def configure debug = false
     config = self.get_config
-    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
-    host = STDIN.gets.chomp
-    if ! host.to_s.empty?
-      config['host'] = host
-    end
+    # puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
+    # host = STDIN.gets.chomp
+    # if ! host.to_s.empty?
+    #   config['host'] = host
+    # end
     puts 'What is the address of your google calendar? (' + self.get_config['calendar'] + '). Optional!'
     calendar = STDIN.gets.chomp
     if ! calendar.to_s.empty?
@@ -47,9 +47,7 @@ class LightWaveRF
         parts = device.split ' '
         if !parts[0].to_s.empty? and !parts[1].to_s.empty?
           new_room = parts.shift
-          if ! config['room']
-            config['room'] = [ ]
-          end
+          config['room'] ||= [ ]
           found = false
           config['room'].each do | room |
             if room['name'] == new_room
@@ -138,62 +136,72 @@ class LightWaveRF
       #   var gRoomNames = [""]
       #   var gRoomStatus = [""]
       # http://rubular.com/r/UH0H4b4afF
-      variables = Hash.new
-      resp.body.scan(/var (gDeviceNames|gDeviceStatus|gRoomNames|gRoomStatus)\s*=\s*([^;]*)/).each do |variable|
-          variables[variable[0]] = variable[1].scan(/"([^"]*)\"/)
-      end
-      debug and (p '[Info - LightWaveRF Gem] Javascript variables ' + variables.to_s)
-      
-      rooms = [ ]
-      # Rooms - gRoomNames is a collection of 8 values, or room names
-      variables['gRoomNames'].each_with_index do |(roomName), roomIndex|
-        # Room Status - gRoomStatus is a collection of 8 values indicating the status of the corresponding room in gRoomNames
-        #   A: Active
-        #   I: Inactive
-        if variables['gRoomStatus'] and variables['gRoomStatus'][roomIndex] and variables['gRoomStatus'][roomIndex][0] == 'A'
-          # Devices - gDeviceNames is a collection of 80 values, structured in blocks of ten values for each room:
-          #   Devices 1 - 6, Mood 1 - 3, All Off
-          roomDevices = Array.new
-          deviceNamesIndexStart = roomIndex*10
-          variables['gDeviceNames'][(deviceNamesIndexStart)..(deviceNamesIndexStart+5)].each_with_index do |(deviceName), deviceIndex|
-            # Device Status - gDeviceStatus is a collection of 80 values which indicate the status/type of the corresponding device in gDeviceNames
-            #   O: On/Off Switch
-            #   D: Dimmer
-            #   R: Radiator(s)
-            #   P: Open/Close
-            #   I: Inactive (i.e. not configured)
-            #   m: Mood (inactive)
-            #   M: Mood (active)
-            #   o: All Off
-            deviceStatusIndex = roomIndex*10+deviceIndex
-            if variables['gDeviceStatus'] and variables['gDeviceStatus'][deviceStatusIndex] and variables['gDeviceStatus'][deviceStatusIndex][0] != 'I'
-                roomDevices << deviceName
-            end
-          end
-          # Create a hash of the active room and active devices and add to rooms array
-          if roomName and roomDevices and roomDevices.any?
-            rooms << {'name'=>roomName,'device'=>roomDevices}
-          end
-        end
-      end
-      
+      rooms = self.get_rooms_from resp.body, debug
       # Update 'room' element in LightWaveRF Gem config file
       # config['room'] is an array of hashes containing the room name and device names
       # in the format { 'name' => 'Room Name', 'device' => ['Device 1', Device 2'] }
-      if rooms and rooms.any?
+      if rooms.any?
         config = self.get_config
         config['room'] = rooms
-        File.open( self.get_config_file, 'w' ) do | handle |
-          handle.write YAML.dump( config )
-        end
-        debug and (p '[Info - LightWaveRF Gem] Updated config with ' + rooms.size.to_s + ' room(s): ' + rooms.to_s)
+	self.put_config config
+        debug and ( p '[Info - LightWaveRF Gem] Updated config with ' + rooms.size.to_s + ' room(s): ' + rooms.to_s )
       else
-        debug and (p '[Info - LightWaveRF Gem] Unable to update config: No active rooms or devices found')
+        debug and ( p '[Info - LightWaveRF Gem] Unable to update config: No active rooms or devices found' )
       end
     else
-      debug and (p '[Info - LightWaveRF Gem] Unable to update config: No response from Host server')
+      debug and ( p '[Info - LightWaveRF Gem] Unable to update config: No response from Host server' )
     end
     self.get_config
+  end
+
+  def get_rooms_from body = '', debug = nil
+    variables = self.get_variables_from resp.body, debug
+    rooms = [ ]
+    # Rooms - gRoomNames is a collection of 8 values, or room names
+    variables['gRoomNames'].each_with_index do | roomName, roomIndex |
+      # Room Status - gRoomStatus is a collection of 8 values indicating the status of the corresponding room in gRoomNames
+      #   A: Active
+      #   I: Inactive
+      if variables['gRoomStatus'] and variables['gRoomStatus'][roomIndex] and variables['gRoomStatus'][roomIndex][0] == 'A'
+        # Devices - gDeviceNames is a collection of 80 values, structured in blocks of ten values for each room:
+        #   Devices 1 - 6, Mood 1 - 3, All Off
+        roomDevices = [ ]
+        deviceNamesIndexStart = roomIndex * 10
+        variables['gDeviceNames'][(deviceNamesIndexStart)..(deviceNamesIndexStart+5)].each_with_index do | deviceName, deviceIndex |
+          # Device Status - gDeviceStatus is a collection of 80 values which indicate the status/type of the corresponding device in gDeviceNames
+          #   O: On/Off Switch
+          #   D: Dimmer
+          #   R: Radiator(s)
+          #   P: Open/Close
+          #   I: Inactive (i.e. not configured)
+          #   m: Mood (inactive)
+          #   M: Mood (active)
+          #   o: All Off
+          deviceStatusIndex = roomIndex * 10 + deviceIndex
+          if variables['gDeviceStatus'] and variables['gDeviceStatus'][deviceStatusIndex] and variables['gDeviceStatus'][deviceStatusIndex][0] != 'I'
+            roomDevices << deviceName
+          end
+        end
+        # Create a hash of the active room and active devices and add to rooms array
+        if roomName and roomDevices and roomDevices.any?
+          rooms << { 'name' => roomName, 'device' => roomDevices }
+        end
+      end
+    end
+    rooms
+  end
+      
+  # Get variables from the source of lightwaverfhost.co.uk
+  # Separated out so it can be tested
+  #
+  def get_variables_from body = '', debug = nil
+    # debug and ( p '[Info - LightWaveRF Gem] body was ' + body.to_s )
+    variables = { }
+    body.scan( /var (gDeviceNames|gDeviceStatus|gRoomNames|gRoomStatus)\s*=\s*([^;]*)/ ).each do | variable |
+      variables[variable[0]] = variable[1].scan /"([^"]*)\"/
+    end
+    debug and ( p '[Info - LightWaveRF Gem] so variables are ' + variables.to_s )
+    variables
   end
 
   # Get a cleaned up version of the rooms and devices from the config file
@@ -464,8 +472,12 @@ class LightWaveRF
   def timer interval = 5, debug = false
     require 'net/http'
     require 'rexml/document'
-    url = LightWaveRF.new.get_config['calendar'] + '?singleevents=true&start-min=' + Date.today.strftime( '%Y-%m-%d' ) + '&start-max=' + Date.today.next.strftime( '%Y-%m-%d' )
-    debug and ( p url )
+    url = LightWaveRF.new.get_config['calendar']
+    url += '?ctz=' + Time.new.zone
+    url += '&singleevents=true'
+    url += '&start-min=' + Date.today.strftime( '%Y-%m-%d' )
+    url += '&start-max=' + Date.today.next.strftime( '%Y-%m-%d' )
+    debug and ( p 'Fetching calendar ' + url )
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
     begin
@@ -485,11 +497,7 @@ class LightWaveRF
         room = command[1].to_s
         device = command[2].to_s
         status = command[4]
-        if status
-          debug and ( p 'found an event called: ' + room + ' ' + device + ' ' + status )
-        else
-          debug and ( p 'found an event called: ' + room + ' ' + device)
-        end
+        debug and ( p e.elements['summary'].text )
         timer = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)/.match e.elements['summary'].text
         if timer
           event_time = timer[2].to_s
@@ -497,21 +505,17 @@ class LightWaveRF
         else
           STDERR.puts 'did not get When: in ' + e.elements['summary'].text
         end
-	# check if a mood command
 	if room == 'mood'
           debug and ( p 'so going to set the mood in ' + device + ' to ' + status + ' now!' )	  
           self.mood device, status, debug
           sleep 1
           triggered << [ room, device, status ]
-	# or if a sequence command
 	elsif room == 'sequence'
           debug and ( p 'so going to execute sequence ' + device + ' now!' )	  
           self.sequence device, debug
           sleep 1
           triggered << [ room, device, status ]
-	# else must be a device command
-        else
-          debug and ( p 'so must be a device command' )	  
+        else # must be a device command
           # @todo fix events that start and end in this period        
           if status
             event_times = { event_time => status }
