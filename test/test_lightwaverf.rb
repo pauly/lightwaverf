@@ -52,5 +52,21 @@ class LightWaveRFTest < Test::Unit::TestCase
     File.unlink file
   end
 
+  def test_get_variables
+    obj = LightWaveRF.new
+    js = <<-END
+      <script type="text/javascript" >
+        gUserName = '';var gNoLogin = 0;gEmail ='foo@foo.com';gPin ='1234';var gDeviceNames = ["Light","Lights","TV","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off","Light","Lights","Device 3","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off","Device 1","Device 2","Device 3","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off","Device 1","Device 2","Device 3","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off","Device 1","Device 2","Device 3","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off","Device 1","Device 2","Device 3","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off","Device 1","Device 2","Device 3","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off","Device 1","Device 2","Device 3","Device 4","Device 5","Device 6","Mood 1","Mood 2","Mood 3","All Off"];var gDeviceStatus = ["D","D","O","I","I","I","m","m","m","o","D","D","I","I","I","I","m","m","m","o","I","I","I","I","I","I","m","m","m","o","I","I","I","I","I","I","m","m","m","o","I","I","I","I","I","I","m","m","m","o","I","I","I","I","I","I","m","m","m","o","I","I","I","I","I","I","m","m","m","o","I","I","I","I","I","I","m","m","m","o"];var gRoomNames = ["Ours","Dining","Room 3","Room 4","Room 5","Room 6","Room 7","Room 8"];var gRoomStatus = ["A","A","I","I","I","I","I","I"];var gSequences = [['Sample Sequence','!R1D1F1,00:00:05','!R1D1F0,00:00:05']];var gSettingsArray = ["foo@foo.com","1234","9.00","Birmingham, UK | 52.48,-01.86","GMT    Greenwich Mean Time|0","74:0A:BC:03:0F:DA","1111","foo@foo.com1234"];var gTimers = [['Sample Sequence','Each MTW___S @ 6:30pm until 31/12/19','!FiP"T201001271834"=!FqP"Sample Sequence",T18:30,S25/01/10,E31/13/19,Dmtwxxxs,W1234l,Mjfmamjjasond','31/12/19 18:30']];var cksecret = "AAAAAAAA";$.cookie("cksecret"  , "AAAAAAAA" );$.cookie("ckemail"   , "foo@foo.com", { expires: 360} );$.cookie("ckpin"     , "1234" , { expires: 360} );
+      </script>
+    END
+    vars = obj.get_variables_from js
+    puts vars.inspect
+    # assert_equal vars['gEmail'], 'foo@foo.com'
+    # assert_equal vars['gPin'], '1234'
+    assert_equal ['Light'], vars['gDeviceNames'][0]
+    assert_equal ['Lights'], vars['gDeviceNames'][1]
+    assert_equal ['TV'], vars['gDeviceNames'][2]
+  end
+
 end
 

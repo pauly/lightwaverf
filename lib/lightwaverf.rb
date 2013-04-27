@@ -155,14 +155,16 @@ class LightWaveRF
   end
 
   def get_rooms_from body = '', debug = nil
-    variables = self.get_variables_from resp.body, debug
+    variables = self.get_variables_from body, debug
     rooms = [ ]
     # Rooms - gRoomNames is a collection of 8 values, or room names
+    debug and ( puts variables['gRoomStatus'].inspect )
     variables['gRoomNames'].each_with_index do | roomName, roomIndex |
       # Room Status - gRoomStatus is a collection of 8 values indicating the status of the corresponding room in gRoomNames
       #   A: Active
       #   I: Inactive
       if variables['gRoomStatus'] and variables['gRoomStatus'][roomIndex] and variables['gRoomStatus'][roomIndex][0] == 'A'
+        debug and ( puts variables['gRoomStatus'][roomIndex].inspect )
         # Devices - gDeviceNames is a collection of 80 values, structured in blocks of ten values for each room:
         #   Devices 1 - 6, Mood 1 - 3, All Off
         roomDevices = [ ]
