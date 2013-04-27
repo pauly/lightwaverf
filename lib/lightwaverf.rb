@@ -475,7 +475,8 @@ class LightWaveRF
     require 'net/http'
     require 'rexml/document'
     url = LightWaveRF.new.get_config['calendar']
-    url += '?ctz=' + Time.new.zone
+    # url += '?ctz=' + Time.new.zone
+    url += '?ctz=UTC'
     url += '&singleevents=true'
     url += '&start-min=' + Date.today.strftime( '%Y-%m-%d' )
     url += '&start-max=' + Date.today.next.strftime( '%Y-%m-%d' )
@@ -485,7 +486,11 @@ class LightWaveRF
     begin
       http.use_ssl = true
     rescue
-      debug and ( p 'cannot use ssl' )
+      debug and ( p 'cannot use ssl, tried ' + parsed_url.host + ', ' + parsed_url.port.to_s )
+      url.gsub! 'https:', 'http:'
+      debug and ( p 'so fetching ' + url )
+      parsed_url = URI.parse url
+      http = Net::HTTP.new parsed_url.host
     end
     request = Net::HTTP::Get.new parsed_url.request_uri
     response = http.request request
