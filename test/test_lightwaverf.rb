@@ -60,7 +60,6 @@ class LightWaveRFTest < Test::Unit::TestCase
       </script>
     END
     vars = obj.get_variables_from js
-    puts vars.inspect
     # assert_equal vars['gEmail'], 'foo@foo.com'
     # assert_equal vars['gPin'], '1234'
     assert_equal ['Light'], vars['gDeviceNames'][0]

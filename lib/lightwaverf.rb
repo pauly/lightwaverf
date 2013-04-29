@@ -1,5 +1,10 @@
 require 'yaml'
 require 'socket'
+require 'net/http'
+require 'uri'
+require 'net/https'
+require 'json'
+require 'rexml/document'
 include Socket::Constants
 
 class LightWaveRF
@@ -83,8 +88,6 @@ class LightWaveRF
   end
 
   def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
-    puts 'put_config got ' + config.to_s
-    puts 'so writing ' + YAML.dump( config )
     File.open( self.get_config_file, 'w' ) do | handle |
       handle.write YAML.dump( config )
     end
@@ -117,25 +120,16 @@ class LightWaveRF
   def update_config email = nil, pin = nil, debug = false
   
     # Login to LightWaveRF Host server
-    require 'net/http'
-    require 'uri'
     uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'
     http = Net::HTTP.new uri.host, uri.port
     if uri.scheme == 'https'
-        require 'net/https'
         http.use_ssl = true
     end
     data = 'pin=' + pin + '&email=' + email
-    headers = { 'Content-Type'=> 'application/x-www-form-urlencoded '}
+    headers = { 'Content-Type'=> 'application/x-www-form-urlencoded' }
     resp, data = http.post uri.request_uri, data, headers
     
     if resp and resp.body
-      # Extract JavaScript variables from the page
-      #   var gDeviceNames = [""]
-      #   var gDeviceStatus = [""]
-      #   var gRoomNames = [""]
-      #   var gRoomStatus = [""]
-      # http://rubular.com/r/UH0H4b4afF
       rooms = self.get_rooms_from resp.body, debug
       # Update 'room' element in LightWaveRF Gem config file
       # config['room'] is an array of hashes containing the room name and device names
@@ -143,7 +137,7 @@ class LightWaveRF
       if rooms.any?
         config = self.get_config
         config['room'] = rooms
-	self.put_config config
+	      self.put_config config
         debug and ( p '[Info - LightWaveRF Gem] Updated config with ' + rooms.size.to_s + ' room(s): ' + rooms.to_s )
       else
         debug and ( p '[Info - LightWaveRF Gem] Unable to update config: No active rooms or devices found' )
@@ -199,10 +193,18 @@ class LightWaveRF
   def get_variables_from body = '', debug = nil
     # debug and ( p '[Info - LightWaveRF Gem] body was ' + body.to_s )
     variables = { }
+    # Extract JavaScript variables from the page
+    #   var gDeviceNames = [""]
+    #   var gDeviceStatus = [""]
+    #   var gRoomNames = [""]
+    #   var gRoomStatus = [""]
+    # http://rubular.com/r/UH0H4b4afF
     body.scan( /var (gDeviceNames|gDeviceStatus|gRoomNames|gRoomStatus)\s*=\s*([^;]*)/ ).each do | variable |
-      variables[variable[0]] = variable[1].scan /"([^"]*)\"/
+      if variable[0]
+        variables[variable[0]] = variable[1].scan /"([^"]*)\"/
+      end
     end
-    debug and ( p '[Info - LightWaveRF Gem] so variables are ' + variables.to_s )
+    debug and ( p '[Info - LightWaveRF Gem] so variables are ' + variables.inspect )
     variables
   end
 
@@ -417,7 +419,6 @@ class LightWaveRF
         data['message']['annotation'] = { 'title' => title.to_s, 'text' => note.to_s }
       end
       debug and ( p data )
-      require 'json'
       File.open( self.get_log_file, 'a' ) do |f|
         f.write( data.to_json + "\n" )
       end
@@ -472,8 +473,6 @@ class LightWaveRF
   #   debug: (Boolean)
   # 
   def timer interval = 5, debug = false
-    require 'net/http'
-    require 'rexml/document'
     url = LightWaveRF.new.get_config['calendar']
     # url += '?ctz=' + Time.new.zone
     url += '?ctz=UTC'
