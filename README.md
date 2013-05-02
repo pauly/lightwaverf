@@ -43,7 +43,7 @@ The first time you try to pair a device from the computer look out for the "pair
 ## how to install on your raspberry pi
     sudo apt-get update
     sudo apt-get upgrade
-    sudo apt-get install git-core gem
+    sudo apt-get install ruby git-core gem
     git clone git://github.com/pauly/lightwaverf.git # you don't need much from here, but have the whole source anyway
     cd lightwaverf && crontab cron.tab # set up the timer and energy monitor
     sudo gem install lightwaverf # or build the gem locally, see below
