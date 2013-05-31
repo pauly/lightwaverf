@@ -294,6 +294,13 @@ Here are some ideas on things to automate with the timers:
 * Shut everything off at midnight unless there's a party going on (Should be obvious how to do this now!)
 * Time your plugin air freshners to switch on/off throughout the day
 
+## Timer kKnown issues/future improvements
+
+* Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
+* Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
+* Improvement: Possibly add some info about which states are currently applicable to the timer log
+* Improvement: Consider adding a 'random' time shift modifier to make holiday security lights more 'realistic'
+
 # History
 
   * v 0.3   changed the format of the config file, adding configure option, and loading config from lightwavehost.co.uk
