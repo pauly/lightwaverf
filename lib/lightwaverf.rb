@@ -1,3 +1,12 @@
+# TODO:
+# All day events without times - need to fix regex
+# Make regex better
+# Get rid of references in yaml cache file - use dup more? Or does it not matter?
+# Cope with events that start and end in the same run?
+# Add info about states to timer log
+# Consider adding a 'random' time shift modifier to make holiday security lights more 'realistic'
+
+
 require 'yaml'
 require 'socket'
 include Socket::Constants
@@ -6,7 +15,9 @@ class LightWaveRF
 
   @config_file = nil
   @log_file = nil
+  @log_timer_file = nil
   @config = nil
+  @timers = nil
 
   # Display usage info
   def usage
@@ -83,6 +94,59 @@ class LightWaveRF
   def get_log_file
     @log_file || File.expand_path('~') + '/lightwaverf.log'
   end
+
+  # Timer log file getter
+  def get_timer_log_file
+    @timer_log_file || File.expand_path('~') + '/lightwaverf-timer.log'
+  end
+  
+  # Timer logger
+  def log_timer_event type, room = nil, device = nil, state = nil, result = false
+    # create log message
+    message = nil
+    case type
+    when 'update'
+      message = '### Updated timer cache'
+    when 'run'
+      message = '*** Ran timers'
+    when 'sequence'
+      message = 'Ran sequence: ' + state
+    when 'mood'
+      message = 'Set mood: ' + mood + ' in room ' + room
+    when 'device'
+      message = 'Set device: ' + device + ' in room ' + room + ' to state ' + state
+    end
+    unless message.nil?
+      File.open( self.get_timer_log_file, 'a' ) do |f|      
+        f.write("\n" + Time.now.to_s + ' - ' + message + ' - ' + ( result ? 'SUCCESS!' : 'FAILED!' ))
+      end
+    end
+  end
+
+  # Timer cache file getter
+  def get_timer_cache_file
+    @log_file || File.expand_path('~') + '/lightwaverf-timer-cache.yml'
+  end
+  
+  # Get timer cache file, create it if needed
+  def get_timer_cache
+    if ! @timers
+      if ! File.exists? self.get_timer_cache_file
+        self.put_timer_cache
+      end
+      @timers = YAML.load_file self.get_timer_cache_file
+    end
+    @timers
+  end
+  
+  # Store the timer cache
+  def put_timer_cache timers = { 'events' => [] }
+    #puts 'put_timer_cache got ' + timers.to_s
+    puts 'so writing ' + YAML.dump( timers)
+    File.open( self.get_timer_cache_file, 'w' ) do | handle |
+      handle.write YAML.dump( timers )
+    end
+  end  
 
   def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
     puts 'put_config got ' + config.to_s
@@ -311,18 +375,37 @@ class LightWaveRF
   #   device: (String)
   #   state: (String)
   def send room = nil, device = nil, state = 'on', debug = false
-    debug and ( puts 'config is ' + self.get_config.to_s )
+    success = false
+    debug and (p 'Executing send on device: ' + device + ' in room: ' + room + ' with state: ' + state)
+    #debug and ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config, debug
     state = 'alloff' if (device.empty? and state == 'off')
-    state = self.class.get_state state
-    if rooms[room] and state and (state == 'Fa' || (device and rooms[room]['device'][device]))
-      command = self.command rooms[room], device, state
-      debug and ( p 'command is ' + command )
-      data = self.raw command
-      debug and ( p 'response is ' + data )
-    else
+
+    unless rooms[room] and state
       STDERR.puts self.usage
+    else
+      # support for setting state for all devices in the room (recursive)
+      if device == 'all'
+        debug and ( p 'Processing all devices...' )        
+        rooms[room]['device'].each do | device_name, code |
+          debug and ( p "Device is: " + device_name )
+          self.send room, device_name, state, debug
+          sleep 1
+        end
+        success = true
+      # process single device
+      elsif state == 'alloff' || (device and rooms[room]['device'][device])
+        state = self.class.get_state state
+        command = self.command rooms[room], device, state
+        debug and ( p 'command is ' + command )
+        data = self.raw command
+        debug and ( p 'response is ' + data )
+        success = true
+      else
+        STDERR.puts self.usage
+      end
     end
+    success
   end
 
   # A sequence of events
@@ -335,6 +418,7 @@ class LightWaveRF
   #   name: (String)
   #   debug: (Boolean)
   def sequence name, debug = false
+    success = true
     if self.get_config['sequence'][name]
       self.get_config['sequence'][name].each do | task |
         if task[0] == 'pause'
@@ -344,11 +428,13 @@ class LightWaveRF
         elsif task[0] == 'mood'
           self.mood task[1], task[2], debug
         else
-          self.send task[0], task[1], task[2], debug          
+          self.send task[0], task[1], task[2].to_s, debug          
         end
         sleep 1
       end
+      success = true
     end
+    success
   end
   
   # Set a mood in one of your rooms
@@ -360,16 +446,44 @@ class LightWaveRF
   #   room: (String)
   #   mood: (String)
   def mood room = nil, mood = nil, debug = false
-    debug and (p 'Executing mood: ' + mood)
-    debug and ( puts 'config is ' + self.get_config.to_s )
+    success = false
+    debug and (p 'Executing mood: ' + mood + ' in room: ' + room)
+    #debug and ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config
-    if rooms[room] and mood and rooms[room]['mood'][mood]
-      command = self.command rooms[room], nil, rooms[room]['mood'][mood]
-      debug and ( p 'command is ' + command )
-      self.raw command
+    # support for setting a mood in all rooms (recursive)
+    if room == 'all'
+      debug and ( p "Processing all rooms..." )
+      rooms.each do | config, each_room |
+        room = each_room['name']
+        debug and ( p "Room is: " + room )
+        success = self.mood room, mood, debug
+        sleep 1     
+      end
+      success = true
+    # process single mood
     else
-      STDERR.puts self.usage
+      if rooms[room] and mood
+        if rooms[room]['mood'][mood]
+          command = self.command rooms[room], nil, rooms[room]['mood'][mood]
+          debug and ( p 'command is ' + command )
+          self.raw command
+          success = true
+        # support for special "moods" via device looping
+        elsif mood[0,3] == 'all'
+          state = mood[3..-1]
+          debug and (p 'Selected state is: ' + state)
+          rooms[room]['device'].each do | device |
+            p 'Processing device: ' + device[0]
+            self.send room, device[0], state, debug
+            sleep 1
+          end
+          success = true
+        end
+      else
+        STDERR.puts self.usage
+      end
     end
+    success
   end
   
   # Learn a mood in one of your rooms
@@ -382,7 +496,7 @@ class LightWaveRF
   #   mood: (String)
   def learnmood room = nil, mood = nil, debug = false
     debug and (p 'Learning mood: ' + mood)
-    debug and ( puts 'config is ' + self.get_config.to_s )
+    #debug and ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config
     if rooms[room] and mood and rooms[room]['learnmood'][mood]
       command = self.command rooms[room], nil, rooms[room]['learnmood'][mood]
@@ -442,29 +556,21 @@ class LightWaveRF
     end
     response
   end
-
-  # Use a google calendar as a timer?
-  # Needs a google calendar, with its url in your config file, with events like "lounge light on" etc
-  # 
-  # Run this as a cron job every 5 mins, ie
-  # */5 * * * * /usr/local/bin/lightwaverf timer 5 > /tmp/timer.out 2>&1
-  # 
-  # Example:
-  #   >> LightWaveRF.new.timer
-  #   >> LightWaveRF.new.state 10
-  #
-  # Sample calendar:
-  #   https://www.google.com/calendar/feeds/aar79qh62fej54nprq6334s7ck%40group.calendar.google.com/public/basic
-  #   https://www.google.com/calendar/embed?src=aar79qh62fej54nprq6334s7ck%40group.calendar.google.com&ctz=Europe/London 
-  #
-  # Arguments:
-  #   interval: (Integer)
-  #   debug: (Boolean)
-  # 
-  def timer interval = 5, debug = false
+  
+  def update_timers past = 60, future = 1440, debug = false
+    p '----------------'
+    p "Updating timers..."
     require 'net/http'
     require 'rexml/document'
-    url = LightWaveRF.new.get_config['calendar'] + '?singleevents=true&start-min=' + Date.today.strftime( '%Y-%m-%d' ) + '&start-max=' + Date.today.next.strftime( '%Y-%m-%d' )
+    require 'time'
+    require 'date'
+      
+    # determine the window to query
+    now = Time.new
+    query_start = now - past.to_i*60
+    query_end = now + future.to_i*60
+    
+    url = LightWaveRF.new.get_config['calendar'] + '?singleevents=true&start-min=' + query_start.strftime( '%FT%T%:z' ).sub('+', '%2B') + '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub('+', '%2B')
     debug and ( p url )
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
@@ -475,62 +581,314 @@ class LightWaveRF
     end
     request = Net::HTTP::Get.new parsed_url.request_uri
     response = http.request request
-    doc = REXML::Document.new response.body
-    now = Time.now.strftime '%H:%M'
-    interval_end_time = ( Time.now + interval.to_i * 60 ).strftime '%H:%M'
-    triggered = []
-    doc.elements.each 'feed/entry' do | e |
-      command = /(\w+) (\w+)( (\w+))?/.match e.elements['title'].text # look for events with a title like 'lounge light on'
-      if command
-        room = command[1].to_s
-        device = command[2].to_s
-        status = command[4]
-        if status
-          debug and ( p 'found an event called: ' + room + ' ' + device + ' ' + status )
-        else
-          debug and ( p 'found an event called: ' + room + ' ' + device)
-        end
-        timer = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)/.match e.elements['summary'].text
-        if timer
-          event_time = timer[2].to_s
-          event_end_time = timer[4]
-        else
-          STDERR.puts 'did not get When: in ' + e.elements['summary'].text
-        end
-	# check if a mood command
-	if room == 'mood'
-          debug and ( p 'so going to set the mood in ' + device + ' to ' + status + ' now!' )	  
-          self.mood device, status, debug
-          sleep 1
-          triggered << [ room, device, status ]
-	# or if a sequence command
-	elsif room == 'sequence'
-          debug and ( p 'so going to execute sequence ' + device + ' now!' )	  
-          self.sequence device, debug
-          sleep 1
-          triggered << [ room, device, status ]
-	# else must be a device command
-        else
-          debug and ( p 'so must be a device command' )	  
-          # @todo fix events that start and end in this period        
-          if status
-            event_times = { event_time => status }
+    
+    # if we get a good response
+    debug and ( p "Response code is: " + response.code)
+    if response.code == '200'
+      debug and ( p "Retrieved calendar ok")
+      doc = REXML::Document.new response.body
+      now = Time.now.strftime '%H:%M'
+            
+      events = Array.new
+      states = Array.new
+      
+      # refresh the list of entries for the caching period
+      doc.elements.each 'feed/entry' do | e |
+        debug and ( p "-------------------")
+        debug and ( p "Processing entry...")
+        event = Hash.new
+
+        # tokenise the title
+        debug and (p "Event title is: " + e.elements['title'].text)
+        command = e.elements['title'].text.split
+        command_length = command.length
+        debug and (p "Number of words is: " + command_length.to_s)
+        if command and command.length >= 1
+          first_word = command[0].to_s
+          # determine the type of the entry
+          if first_word[0,1] == '#'
+            debug and ( p "Type is: state")
+            event['type'] = 'state' # temporary type, will be overridden later
+            event['room'] = nil
+            event['device'] = nil
+            event['state'] = first_word[1..-1].to_s
+            modifier_start = command_length # can't have modifiers on states
           else
-            event_times = { event_time => 'on', event_end_time => 'off' }
-          end
-          event_times.each do | t, s |
-            debug and ( p e.elements['title'].text + ' - ' + now + ' < ' + t + ' < ' + interval_end_time + ' ?' )
-            if t >= now and t < interval_end_time
-              debug and ( p 'so going to turn the ' + room + ' ' + device + ' ' + s.to_s + ' now!' )
-              self.send room, device, s.to_s
-              sleep 1
-              triggered << [ room, device, s ]
+            case first_word
+            when 'mood'
+              debug and ( p "Type is: mood")
+              event['type'] = 'mood'
+              event['room'] = command[1].to_s
+              event['device'] = nil
+              event['state'] = command[2].to_s
+              modifier_start = 3
+            when 'sequence'
+              debug and ( p "Type is: sequence")
+              event['type'] = 'sequence'
+              event['room'] = nil
+              event['device'] = nil
+              event['state'] = command[1].to_s
+              modifier_start = 2
+            else
+              debug and ( p "Type is: device")
+              event['type'] = 'device'
+              event['room'] = command[0].to_s
+              event['device'] = command[1].to_s
+              # handle optional state
+              if command_length > 2
+                third_word = command[2].to_s
+                first_char = third_word[0,1]
+                debug and ( p "First char is: " + first_char)
+                # if the third word does not start with a modifier flag, assume it's a state
+                if first_char != '@' and first_char != '!' and first_char != '+' and first_char != '-'
+                  debug and ( p "State has been given.")
+                  event['state'] = command[2].to_s
+                  modifier_start = 3
+                else
+                  debug and ( p "State has not been given.")
+                  modifier_start = 2
+                end
+              else
+                debug and ( p "State has not been given.")
+                event['state'] = nil
+                modifier_start = 2
+              end            
             end
           end
+          
+          # get modifiers if they exist
+          time_modifier = 0
+          if command_length > modifier_start
+            debug and ( p "May have modifiers...")
+            when_modifiers = Array.new
+            unless_modifiers = Array.new
+            modifier_count = command_length - modifier_start
+            debug and (p "Count of modifiers is " + modifier_count.to_s)
+            for i in modifier_start..(command_length-1)
+              modifier = command[i]
+              if modifier[0,1] == '@'
+                debug and ( p "Found when modifier: " + modifier[1..-1])
+                when_modifiers.push modifier[1..-1]
+              elsif modifier[0,1] == '!'
+                debug and ( p "Found unless modifier: " + modifier[1..-1])
+                unless_modifiers.push modifier[1..-1]
+              elsif modifier[0,1] == '+'
+                debug and ( p "Found positive time modifier: " + modifier[1..-1])
+                time_modifier = modifier[1..-1].to_i
+              elsif modifier[0,1] == '-'
+                debug and ( p "Found negative time modifier: " + modifier[1..-1])
+                time_modifier = modifier[1..-1].to_i * -1
+              end
+            end
+            # add when/unless modifiers to the event
+            event['when_modifiers'] = when_modifiers
+            event['unless_modifiers'] = unless_modifiers
+          end          
+            
+          # parse the date string
+          debug and ( p "Time string is: " + e.elements['summary'].text)
+          event_time = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)&nbsp;\n(.*)<br>(.*)/.match e.elements['summary'].text
+          debug and ( p "Event times are: " + event_time.to_s)
+          start_date = event_time[1].to_s
+          start_time = event_time[2].to_s
+          end_date = event_time[3].to_s
+          end_time = event_time[4].to_s
+          timezone = event_time[5].to_s
+          if end_date == '' or end_date.nil? # copy start date to end date if it wasn't given (as the same date)
+            end_date = start_date
+          end          
+          debug and ( p "Start date: " + start_date)
+          debug and ( p "Start time: " + start_time)
+          debug and ( p "End date: " + end_date)
+          debug and ( p "End time: " + end_time)
+          debug and ( p "Timezone: " + timezone)
+
+          # convert to datetimes
+          start_dt = DateTime.parse(start_date.strip + ' ' + start_time.strip + ' ' + timezone.strip)
+          end_dt = DateTime.parse(end_date.strip + ' ' + end_time.strip + ' ' + timezone.strip)
+
+          # apply time modifier if it exists
+          if time_modifier != 0
+            debug and ( p "Adjusting timings by: " + time_modifier.to_s)
+            start_dt = ((start_dt.to_time) + time_modifier*60).to_datetime
+            end_dt = ((end_dt.to_time) + time_modifier*60).to_datetime            
+          end
+          
+          debug and ( p "Start datetime: " + start_dt.to_s)
+          debug and ( p "End datetime: " + end_dt.to_s)
+          
+          # populate the dates
+          event['date'] = start_dt
+          # handle device entries without explicit on/off state
+          if event['type'] == 'device' and ( event['state'].nil? or ( event['state'] != 'on' and event['state'] != 'off' ))
+            debug and ( p "Duplicating event without explicit on/off state...")
+            # if not state was given, assume we meant 'on'
+            if event['state'].nil?
+              event['state'] = 'on'
+            end
+            end_event = event.dup # duplicate event for start and end
+            end_event['date'] = end_dt
+            end_event['state'] = 'off'
+            events.push event              
+            events.push end_event
+          # create state plus start and end events if a state
+          elsif event['type'] == 'state'
+            debug and ( p "Processing state : " + event['state'])
+            # create state
+            state = Hash.new
+            state['name'] = event['state']
+            state['start'] = start_dt.dup
+            state['end'] = end_dt.dup
+            states.push state
+            # convert event to start and end sequence
+            event['type'] = 'sequence'
+            event['state'] = state['name'] + '_start'
+            end_event = event.dup # duplicate event for start and end
+            end_event['date'] = end_dt
+            end_event['state'] = state['name'] + '_end'
+            events.push event              
+            events.push end_event
+          # else just add the event
+          else
+            events.push event              
+          end
+                    
         end
+        
+      end
+
+      # record some timestamps
+      info = Hash.new
+      timers['updated_at'] = Time.new.strftime( '%FT%T%:z' )
+      timers['start_time'] = query_start.strftime( '%FT%T%:z' )
+      timers['end_time'] = query_end.strftime( '%FT%T%:z' )
+
+      # build final timer config
+      timers = Hash.new
+      timers['info'] = info
+      timers['events'] = events
+      timers['states'] = states
+      
+      p 'Timer list is: ' + YAML.dump(timers)
+      
+      # store the list
+      put_timer_cache timers
+      self.log_timer_event 'update', nil, nil, nil, true
+    
+    else
+        self.log_timer_event 'update', nil, nil, nil, false
+    end
+  end     
+        
+  def run_timers interval = 5, debug = false
+    p '----------------'
+    p "Running timers..."
+    get_timer_cache    
+    debug and ( p 'Timer list is: ' + YAML.dump(@timers))
+    
+    # get the current time and end interval time
+    now = Time.new
+    start_tm = now - (now.sec)
+    end_tm = start_tm + (interval.to_i * 60)
+  
+    # convert to datetimes
+    start_horizon = DateTime.parse(start_tm.to_s)
+    end_horizon = DateTime.parse(end_tm.to_s)  
+    p '----------------'
+    p 'Start horizon is: ' + start_horizon.to_s
+    p 'End horizon is: ' + end_horizon.to_s
+    
+    # sort the events and states (to guarantee order if longer intervals are used)
+    @timers['events'].sort! { |x, y| x['date'] <=> y['date'] }
+    @timers['states'].sort! { |x, y| x['date'] <=> y['date'] }
+    
+    # array to hold events that should be executed this run
+    run_list = Array.new
+
+    # process each event
+    @timers['events'].each do | event |
+      debug and ( p '----------------')
+      debug and ( p 'Processing event: ' + event.to_s)
+      debug and ( p 'Event time is: ' + event['date'].to_s)
+      
+      # first, assume we'll not be running the event
+      run_now = false
+      
+      # check that it is in the horizon time
+      unless event['date'] >= start_horizon and event['date'] < end_horizon
+        debug and ( p 'Event is NOT in horizon...ignoring')
+      else
+        debug and ( p 'Event is in horizon...')
+        run_now = true
+        
+        # if has modifiers, check modifiers against states
+        unless event['when_modifiers'].nil?
+          debug and ( p 'Event has when modifiers. Checking they are all met...')
+
+          # determine which states apply at the time of the event
+          applicable_states = Array.new
+          @timers['states'].each do | state |
+            if event['date'] >= state['start'] and event['date'] < state['end']
+              applicable_states.push state['name']
+            end
+          end
+          debug and ( p 'Applicable states are: ' + applicable_states.to_s)
+
+          # check that each when modifier exists in appliable states
+          event['when_modifiers'].each do | modifier |
+            unless applicable_states.include? modifier
+              debug and ( p 'Event when modifier not met: ' + modifier)
+              run_now = false
+              break              
+            end
+          end
+
+          # check that each unless modifier does not exist in appliable states
+          event['unless_modifiers'].each do | modifier |
+            if applicable_states.include? modifier
+              debug and ( p 'Event unless modifier not met: ' + modifier)
+              run_now = false
+              break              
+            end
+          end          
+        end
+        
+        # if we have determined the event should run, add to the run list
+        if run_now
+            run_list.push event
+        end        
       end
     end
-    triggered.length.to_s + " events triggered"
+    
+    # process the run list
+    p '-----------------------'
+    p 'Events to execute this run are: ' + run_list.to_s
+    
+    triggered = []
+
+    run_list.each do | event |
+      # execute based on type
+      case event['type']
+      when 'mood'
+        p 'Executing mood. Room: ' + event['room'] + ', Mood: ' + event['state']
+        result = self.mood event['room'], event['state'], debug
+        sleep 1
+        triggered << [ event['room'], event['device'], event['state'] ]
+      when 'sequence'
+        p 'Executing sequence. Sequence: ' + event['state']
+        result = self.sequence event['state'], debug
+        sleep 1
+        triggered << [ event['room'], event['device'], event['state'] ]
+      else
+        p 'Executing device. Room: ' + event['room'] + ', Device: ' + event['device'] + ', State: ' + event['state']
+        result = self.send event['room'], event['device'], event['state'], debug        
+        sleep 1
+        triggered << [ event['room'], event['device'], event['state'] ]        
+      end
+        self.log_timer_event event['type'], event['room'], event['device'], event['state'], result      
+    end
+
+    # update energy log
     title = nil
     text = nil
     if triggered.length > 0
@@ -539,6 +897,9 @@ class LightWaveRF
       text = triggered.map { |e| e.join " " }.join ", "
     end
     self.energy title, text, debug
+    
+    self.log_timer_event 'run', nil, nil, nil, true    
   end
+
 end
 
