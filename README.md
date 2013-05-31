@@ -1,16 +1,14 @@
 # lightwaverf
 
-###########
-Overview
-###########
+# Overview
 
 LightWaveRF wifi link communication for command line home automation. A ruby gem for lightwaverf home automation. Interact with lightwaverf wifi link from code or the command line. Control your lights, heating, sockets etc. Also set up timers using a google calendar and log energy usage.
 
-###########
-Setup
-###########
+# Setup
 
 Get a LightWaveRF wifi link http://amzn.to/V7yPPK and a remote socket http://amzn.to/RkukDo
+
+## Install gem
 
 Then this code is available as a gem, so:
 
@@ -19,6 +17,8 @@ Then this code is available as a gem, so:
 No need to do anything with this repo unless you are particularly interested.
 
 This code unofficial an unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf
+
+## Setup config
 
 You need a yml config file in your home directory, to build one, if you have already uploaded your data to the LightwaveRF server, download this data by typing
 
@@ -42,13 +42,17 @@ and that will create something like the following.
 
 That needs to be valid yml so the spacing etc is important.
 
+## Device pairing
+
 Then "pair" your code with your device as normal, put it in pairing mode then turn the device on with the code, with commands like
 
     lightwaverf lounge light on
 
 The first time you try to pair a device from the computer look out for the "pair with this device" message on the wifi link lcd screen, and click the button to accept.
 
-## how to install on your raspberry pi
+Note that if you are already using the iPhone/other app, then your device pairings may already be done. The wifilink is a single transmitter from the actual device's perspective - all clients (so your iPhone and PC running this ruby program) are the same thing.
+
+## How to install on your raspberry pi
     sudo apt-get update
     sudo apt-get upgrade
     git clone git://github.com/pauly/lightwaverf.git # you don't need much from here, but have the whole source anyway
@@ -57,11 +61,11 @@ The first time you try to pair a device from the computer look out for the "pair
     cp lightwaverf-config.yml ~ && vi ~/lightwaverf-config.yml # and put in your ip address, calendar, rooms, and devices
     lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
-## how to build the gem from the source
+## How to build the gem from the source
     gem build lightwaverf.gemspec 
     sudo gem install ./lightwaverf-0.2.1.gem # or whatever the latest version is
 
-## how to install the website in this repo on a raspberry pi
+## How to install the website in this repo on a raspberry pi
 
 Install node https://gist.github.com/stolsma/3301813 (it takes an hour or so to build node on the pi.)
 Then I built in authentication using twitter too, so that the site can be up and running and public, but you'd need to be authenticated to see the usage graphs, so to do that register an app at dev.twitter.com/apps - don't think it matters what you use for any settings but when it's done go to the oauth settings get  the consumer key and consumer secret, copy config/default.sh.sample config/default.sh and paste those values in. Then there are a couple of depencies I think so
@@ -76,9 +80,9 @@ hope that works and the site would then be running on port 3000 on your pi's ip 
 
 Not sure how stable it is but there is a file called "node" in the repo that you can copy into /etc/init.d/ and it should restart the server when the pi restarts. 
 
-###########
-## Device control
-###########
+# Usage
+
+## Simple device control
 
 You can set the state of any device with commands such as the following:
 
@@ -108,9 +112,7 @@ Tip: I have found that you can actually pair a single device to 2 different devi
     
 This means that you can set up a 'device' in slot D6 which will actually control all the devices at once. Just remember not to to call it 'all' or 'alloff' as these are used as keywords in the code to do the same thing in a different way as per the above.
 
-###########
 ## Mood support
-###########
 
 Moods are now supported if they are added to the lightwaverf-config.yml file as follows:
 
@@ -159,9 +161,7 @@ And moods are supported in google calendar timers by creating an event with the 
 
 Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time (e.g. with the special 'alloff' mood)
 
-###########
 ## Sequence support
-###########
 
 Sequences can execute a number of tasks in order, either simple device commands or setting moods, as per the following example:
 
@@ -178,13 +178,11 @@ Note that pauses can be added (in seconds)
         - living
         - alloff
 
-###########
-## Automated timers (via Google Calendar)
-###########
+# Automated timers (via Google Calendar)
 
 This functionality allows you to create simple or complex schedules to automatically control all your devices (and set moods, run sequences) by simply creating a Google Calendar (gcal) and adding entries to it for the actions you wish to take. You have all the power of gcal's recurrence capabilities to set repeating events.
 
-## how to set up the google calendar timers
+## How to set up the google calendar timers
 
   * make yourself a google calendar http://www.google.com/calendar
     * click on my calendars
@@ -194,7 +192,7 @@ This functionality allows you to create simple or complex schedules to automatic
     * put this private address of the calendar into the lightwaverf-config.yml file
     * setup crontab (see below)    
 
-## crontab setup
+## Crontab setup
 
 The timer function utilises 2 separate functions that need scheduling with cron independently:
 
@@ -227,7 +225,7 @@ where:
 
 Both functions will log their key activities to lightwaverf-timer.log, so you can check that everything is running ok, and review which devices, moods and sequences were triggered at what times. In the crontab example above, the more detailed logging of either function is sent to /tmp/timer.out from where you can see exactly what happened - switch debug on for more logging.
 
-## usage
+## Timer usage
 
 Once setup, you can create various entries to control as follows:
 
@@ -247,7 +245,7 @@ And you can execute sequences using the calendar by creating an eventas follows:
 
     sequence sunset - run the sequence called 'sunset' in your configuration
 
-## states
+## States
 
 States offer a way of getting greater flexibility to manage your devices. Essentially, you can create a special gcal entry that sets a state for the period that that entry covers. You can then make other events dependent on that state either being true or false.
 
@@ -269,7 +267,7 @@ You can use any number of modifiers which will all be considered with AND boolea
 
 Note that all-day events are not currently supported, so your states (and all events for that matter) will need to define a start and end time.
 
-## other modifiers
+## Other modifiers
 
 You can also adjust the run time of the event (relative to the actual gcal event time) by a number of minutes as follows:
 
@@ -280,7 +278,7 @@ Note that this is useful when using sunset/sunrise based timers (see below)
 
 Also note that you can only modify the time within the caching time you setup in the cron job for update timers. i.e. you cannot modify an event ahead by 2 hours but only cache historically by 1 hour, as the event will have been purged from the cache by the time you want it run. You will have to configure the caching period on the update timers function to be at least as 'wide' as the biggest time modifier you are using.
 
-## sunset/sunrise
+## Sunset/sunrise
 
 In order to trigger events based on local sunset/sunrise, you can play a neat trick with the "if this then that" service (www.ifttt.com). Essentially, you can set up a daily job that will automatically create a gcal entry at the start of each day where the start time is the local sunset or sunrise. I use this to create and entry daily which runs a certain sequence. See this IFTTT recipe as an example: https://ifttt.com/recipes/96584
 
@@ -288,7 +286,7 @@ In conjunction with the time modifiers above, you can schedule events to occur r
     
 If you want to improve any of my docs or code then please fork this and send me a pull request and I'll merge it in.
 
-# some example use cases
+## Some example timer use cases
 
 Here are some ideas on things to automate with the timers:
 
@@ -298,10 +296,11 @@ Here are some ideas on things to automate with the timers:
 * Shut everything off at midnight unless there's a party going on (Should be obvious how to do this now!)
 * Time your plugin air freshners to switch on/off throughout the day
 
-## history
+# History
 
   * v 0.3   changed the format of the config file, adding configure option, and loading config from lightwavehost.co.uk
   * v 0.3.2 eliminated need to specify WiFi Link IP address (host) in config, added option to update WiFi Link timezone and added ability to turn off all devices in a room
 
-## thanks
+# Thanks
+
 thanks to everyone in the lightwaverf community hackers forum http://lightwaverfcommunity.org.uk/forums/forum/lightwaverf-hackers/
