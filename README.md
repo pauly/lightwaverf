@@ -284,8 +284,6 @@ In order to trigger events based on local sunset/sunrise, you can play a neat tr
 
 In conjunction with the time modifiers above, you can schedule events to occur relative to the local sunset/sunrise - e.g do something one hour after sunset.
     
-If you want to improve any of my docs or code then please fork this and send me a pull request and I'll merge it in.
-
 ## Some example timer use cases
 
 Here are some ideas on things to automate with the timers:
@@ -304,3 +302,6 @@ Here are some ideas on things to automate with the timers:
 # Thanks
 
 thanks to everyone in the lightwaverf community hackers forum http://lightwaverfcommunity.org.uk/forums/forum/lightwaverf-hackers/
+
+If you want to improve any of my docs or code then please fork this and send me a pull request and I'll merge it in.
+
