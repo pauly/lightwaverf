@@ -16,13 +16,13 @@ Then this code is available as a gem, so:
 
 No need to do anything with this repo unless you are particularly interested.
 
-This code unofficial an unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf / @pauly
+This code is unofficial and unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf / @pauly
 
 ## Setup config
 
 You need a yml config file in your home directory, to build one, if you have already uploaded your data to the LightwaveRF server, download this data by typing
 
-    lightwaverf update 'email@example.com' '1234'
+    lightwaverf update email@example.com 1234
 
 Otherwise, manually specify rooms and devices by typing
 
@@ -111,7 +111,7 @@ Tip: I have found that you can actually pair a single device to 2 different devi
     Side light D2 & D4
     Spotlights D3 & D4
     
-This means that you can set up a 'device' in slot D6 which will actually control all the devices at once. Just remember not to to call it 'all' or 'alloff' as these are used as keywords in the code to do the same thing in a different way as per the above.
+This means that you can set up a 'device' in slot D4 which will actually control all the devices at once. Just remember not to to call it 'all' or 'alloff' as these are used as keywords in the code to do the same thing in a different way as per the above.
 
 ## Mood support
 
@@ -207,17 +207,17 @@ These processes can be scheduled in cron at different rates. It is unlikely that
 
 Note that following options can be provided to the update_timers function:
     
-    update_timers 60 1440 true
+    lightwaverf update_timers 60 1440 true
     
 where:
 
 * 60 is the amount of minutes in the past for which to cache entries (see below for why this is useful)
-* 1440 is the amount of minutes in the future to cache entries (essentialyl define how long you can 'survive' without connectivity to gcal)
+* 1440 is the amount of minutes in the future to cache entries (essentially define how long you can 'survive' without connectivity to gcal)
 * true sets debug mode on if needed
 
 Note that following options must/can be provided to the run_timers function:
     
-    run_timers 5 true
+    lightwaverf run_timers 5 true
     
 where:
 
@@ -304,6 +304,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.4   super timers!
   * v 0.3   changed the format of the config file, adding configure option, and loading config from lightwavehost.co.uk
   * v 0.3.2 eliminated need to specify WiFi Link IP address (host) in config, added option to update WiFi Link timezone and added ability to turn off all devices in a room
 

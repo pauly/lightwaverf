@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
     Control your lights, heating, sockets etc.
     Also set up timers using a google calendar and log energy usage.
   end
-  s.authors     = [ 'Paul Clarke', 'Ian Perrin' ]
+  s.authors     = [ 'Paul Clarke', 'Ian Perrin', 'Julian McLean' ]
   s.email       = 'pauly@clarkeology.com'
   s.files       = [ 'lib/lightwaverf.rb' ]
   s.homepage    = 'http://www.clarkeology.com/wiki/lightwaverf+ruby'
