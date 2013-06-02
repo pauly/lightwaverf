@@ -204,7 +204,7 @@ class LightWaveRF
       if rooms.any?
         config = self.get_config
         config['room'] = rooms
-	      self.put_config config
+        self.put_config config
         debug and ( p '[Info - LightWaveRF Gem] Updated config with ' + rooms.size.to_s + ' room(s): ' + rooms.to_s )
       else
         debug and ( p '[Info - LightWaveRF Gem] Unable to update config: No active rooms or devices found' )
@@ -294,10 +294,10 @@ class LightWaveRF
       m = 1
       unless room['mood'].nil?
         room['mood'].each do | mood |
-	  rooms[room['name']]['mood'][mood] = 'FmP' + m.to_s
-	  rooms[room['name']]['learnmood'][mood] = 'FsP' + m.to_s
-	  m += 1
-	end
+          rooms[room['name']]['mood'][mood] = 'FmP' + m.to_s
+          rooms[room['name']]['learnmood'][mood] = 'FsP' + m.to_s
+          m += 1
+        end
       end
       # add 'all off' special mood
       rooms[room['name']]['mood']['alloff'] = 'Fa'      
@@ -438,7 +438,7 @@ class LightWaveRF
       self.get_config['sequence'][name].each do | task |
         if task[0] == 'pause'
           debug and ( p 'Pausing for ' + task[1].to_s + ' seconds...' ) 
-          sleep task[1]
+          sleep task[1].to_i
           debug and ( p 'Resuming...' )
         elsif task[0] == 'mood'
           self.mood task[1], task[2], debug
