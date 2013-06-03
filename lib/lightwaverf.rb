@@ -105,7 +105,7 @@ class LightWaveRF
   def get_timer_log_file
     @timer_log_file || File.expand_path('~') + '/lightwaverf-timer.log'
   end
-  
+
   # Timer logger
   def log_timer_event type, room = nil, device = nil, state = nil, result = false
     # create log message
@@ -123,7 +123,7 @@ class LightWaveRF
       message = 'Set device: ' + device + ' in room ' + room + ' to state ' + state
     end
     unless message.nil?
-      File.open( self.get_timer_log_file, 'a' ) do |f|      
+      File.open( self.get_timer_log_file, 'a' ) do | f |
         f.write("\n" + Time.now.to_s + ' - ' + message + ' - ' + ( result ? 'SUCCESS!' : 'FAILED!' ))
       end
     end
@@ -133,7 +133,7 @@ class LightWaveRF
   def get_timer_cache_file
     @log_file || File.expand_path('~') + '/lightwaverf-timer-cache.yml'
   end
-  
+
   # Get timer cache file, create it if needed
   def get_timer_cache
     if ! @timers
@@ -144,15 +144,13 @@ class LightWaveRF
     end
     @timers
   end
-  
+
   # Store the timer cache
   def put_timer_cache timers = { 'events' => [ ] }
-    #puts 'put_timer_cache got ' + timers.to_s
-    puts 'so writing ' + YAML.dump( timers)
     File.open( self.get_timer_cache_file, 'w' ) do | handle |
       handle.write YAML.dump( timers )
     end
-  end  
+  end
 
   def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
     File.open( self.get_config_file, 'w' ) do | handle |
@@ -185,7 +183,7 @@ class LightWaveRF
   # Credits:
   #   wonko - http://lightwaverfcommunity.org.uk/forums/topic/querying-configuration-information-from-the-lightwaverf-website/
   def update_config email = nil, pin = nil, debug = false
-  
+
     # Login to LightWaveRF Host server
     uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'
     http = Net::HTTP.new uri.host, uri.port
@@ -195,7 +193,7 @@ class LightWaveRF
     data = 'pin=' + pin + '&email=' + email
     headers = { 'Content-Type'=> 'application/x-www-form-urlencoded' }
     resp, data = http.post uri.request_uri, data, headers
-    
+
     if resp and resp.body
       rooms = self.get_rooms_from resp.body, debug
       # Update 'room' element in LightWaveRF Gem config file
@@ -253,7 +251,7 @@ class LightWaveRF
     end
     rooms
   end
-      
+
   # Get variables from the source of lightwaverfhost.co.uk
   # Separated out so it can be tested
   #
@@ -300,7 +298,7 @@ class LightWaveRF
         end
       end
       # add 'all off' special mood
-      rooms[room['name']]['mood']['alloff'] = 'Fa'      
+      rooms[room['name']]['mood']['alloff'] = 'Fa'
       r += 1
     end
     rooms
@@ -334,7 +332,7 @@ class LightWaveRF
       when 'high'
         state = 'FdP24'
       when 'full'
-        state = 'FdP32'        
+        state = 'FdP32'
       when 1..100
         state = 'FdP' + ( state * 0.32 ).round.to_s
       else
@@ -361,7 +359,7 @@ class LightWaveRF
       '666,!' + room['id'] + room['device'][device] + state + '|Turn ' + room['name'] + ' ' + device + '|' + state + ' via @pauly'
     else
       '666,!' + room['id'] + state + '|Turn ' + room['name'] + '|' + state + ' via @pauly'
-    end      
+    end
   end
 
   # Set the Time Zone on the LightWaveRF WiFi Link
@@ -378,7 +376,7 @@ class LightWaveRF
     debug and ( puts '[Info - LightWaveRF] timezone: response is ' + data )
     return (data == "666,OK\r\n")
   end
-  
+
   # Turn one of your devices on or off or all devices in a room off
   #
   # Example:
@@ -401,7 +399,7 @@ class LightWaveRF
     else
       # support for setting state for all devices in the room (recursive)
       if device == 'all'
-        debug and ( p 'Processing all devices...' )        
+        debug and ( p 'Processing all devices...' )
         rooms[room]['device'].each do | device_name, code |
           debug and ( p "Device is: " + device_name )
           self.send room, device_name, state, debug
@@ -437,13 +435,13 @@ class LightWaveRF
     if self.get_config['sequence'][name]
       self.get_config['sequence'][name].each do | task |
         if task[0] == 'pause'
-          debug and ( p 'Pausing for ' + task[1].to_s + ' seconds...' ) 
+          debug and ( p 'Pausing for ' + task[1].to_s + ' seconds...' )
           sleep task[1].to_i
           debug and ( p 'Resuming...' )
         elsif task[0] == 'mood'
           self.mood task[1], task[2], debug
         else
-          self.send task[0], task[1], task[2].to_s, debug          
+          self.send task[0], task[1], task[2].to_s, debug
         end
         sleep 1
       end
@@ -451,7 +449,7 @@ class LightWaveRF
     end
     success
   end
-  
+
   # Set a mood in one of your rooms
   #
   # Example:
@@ -472,7 +470,7 @@ class LightWaveRF
         room = each_room['name']
         debug and ( p "Room is: " + room )
         success = self.mood room, mood, debug
-        sleep 1     
+        sleep 1
       end
       success = true
     # process single mood
@@ -500,7 +498,7 @@ class LightWaveRF
     end
     success
   end
-  
+
   # Learn a mood in one of your rooms
   #
   # Example:
@@ -521,7 +519,7 @@ class LightWaveRF
       STDERR.puts self.usage
     end
   end
-    
+
   def energy title = nil, note = nil, debug = false
     debug and note and ( p 'energy: ' + note )
     data = self.raw '666,@?'
@@ -536,7 +534,7 @@ class LightWaveRF
         data['message']['annotation'] = { 'title' => title.to_s, 'text' => note.to_s }
       end
       debug and ( p data )
-      File.open( self.get_log_file, 'a' ) do |f|
+      File.open( self.get_log_file, 'a' ) do | f |
         f.write( data.to_json + "\n" )
       end
       data['message']
@@ -547,7 +545,7 @@ class LightWaveRF
     response = nil
     # Get host address or broadcast address
     host = self.get_config['host'] || '255.255.255.255'
-    # Create socket 
+    # Create socket
     listener = UDPSocket.new
     # Add broadcast socket options if necessary
     if (host == '255.255.255.255')
@@ -570,16 +568,16 @@ class LightWaveRF
     end
     response
   end
-  
+
   def update_timers past = 60, future = 1440, debug = false
     p '----------------'
     p "Updating timers..."
-      
+
     # determine the window to query
     now = Time.new
-    query_start = now - past.to_i * 60
-    query_end = now + future.to_i * 60
-    
+    query_start = now - self.to_seconds( past )
+    query_end = now + self.to_seconds( future )
+
     url = LightWaveRF.new.get_config['calendar'] + '?singleevents=true&start-min=' + query_start.strftime( '%FT%T%:z' ).sub('+', '%2B') + '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub('+', '%2B')
     debug and ( p url )
     parsed_url = URI.parse url
@@ -595,17 +593,17 @@ class LightWaveRF
     end
     request = Net::HTTP::Get.new parsed_url.request_uri
     response = http.request request
-    
+
     # if we get a good response
     debug and ( p "Response code is: " + response.code)
     if response.code == '200'
       debug and ( p "Retrieved calendar ok")
       doc = REXML::Document.new response.body
       now = Time.now.strftime '%H:%M'
-            
-      events = Array.new
-      states = Array.new
-      
+
+      events = [ ]
+      states = [ ]
+
       # refresh the list of entries for the caching period
       doc.elements.each 'feed/entry' do | e |
         debug and ( p "-------------------")
@@ -666,10 +664,10 @@ class LightWaveRF
                 debug and ( p "State has not been given." )
                 event['state'] = nil
                 modifier_start = 2
-              end            
+              end
             end
           end
-          
+
           # get modifiers if they exist
           time_modifier = 0
           if command_length > modifier_start
@@ -697,8 +695,8 @@ class LightWaveRF
             # add when/unless modifiers to the event
             event['when_modifiers'] = when_modifiers
             event['unless_modifiers'] = unless_modifiers
-          end          
-            
+          end
+
           # parse the date string
           debug and ( p "Time string is: " + e.elements['summary'].text)
           event_time = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)&nbsp;\n(.*)<br>(.*)/.match e.elements['summary'].text
@@ -710,7 +708,7 @@ class LightWaveRF
           timezone = event_time[5].to_s
           if end_date == '' or end_date.nil? # copy start date to end date if it wasn't given (as the same date)
             end_date = start_date
-          end          
+          end
           debug and ( p "Start date: " + start_date)
           debug and ( p "Start time: " + start_time)
           debug and ( p "End date: " + end_date)
@@ -725,7 +723,7 @@ class LightWaveRF
           if time_modifier != 0
             debug and ( p "Adjusting timings by: " + time_modifier.to_s)
             start_dt = ((start_dt.to_time) + time_modifier*60).to_datetime
-            end_dt = ((end_dt.to_time) + time_modifier*60).to_datetime            
+            end_dt = ((end_dt.to_time) + time_modifier*60).to_datetime
           end
 
           debug and ( p "Start datetime: " + start_dt.to_s)
@@ -794,6 +792,22 @@ class LightWaveRF
     end
   end
 
+  # Convert a string to seconds, assume it is in minutes
+  def self.to_seconds interval = 0
+    match = /^(\d+)([shd])$/.match( interval.to_s )
+    if match
+      case match[2]
+      when 's'
+        return match[1].to_i
+      when 'h'
+        return match[1].to_i * 3600
+      when 'd'
+        return match[1].to_i * 86400
+      end
+    end
+    return interval.to_i * 60
+  end
+
   def run_timers interval = 5, debug = false
     p '----------------'
     p "Running timers..."
@@ -802,39 +816,39 @@ class LightWaveRF
 
     # get the current time and end interval time
     now = Time.new
-    start_tm = now - (now.sec)
-    end_tm = start_tm + (interval.to_i * 60)
+    start_tm = now - now.sec
+    end_tm = start_tm + self.to_seconds( interval )
 
     # convert to datetimes
-    start_horizon = DateTime.parse(start_tm.to_s)
-    end_horizon = DateTime.parse(end_tm.to_s)
+    start_horizon = DateTime.parse start_tm.to_s
+    end_horizon = DateTime.parse end_tm.to_s
     p '----------------'
     p 'Start horizon is: ' + start_horizon.to_s
     p 'End horizon is: ' + end_horizon.to_s
 
     # sort the events and states (to guarantee order if longer intervals are used)
-    @timers['events'].sort! { |x, y| x['date'] <=> y['date'] }
-    @timers['states'].sort! { |x, y| x['date'] <=> y['date'] }
+    @timers['events'].sort! { | x, y | x['date'] <=> y['date'] }
+    @timers['states'].sort! { | x, y | x['date'] <=> y['date'] }
 
     # array to hold events that should be executed this run
-    run_list = Array.new
+    run_list = [ ]
 
     # process each event
     @timers['events'].each do | event |
       debug and ( p '----------------')
       debug and ( p 'Processing event: ' + event.to_s)
       debug and ( p 'Event time is: ' + event['date'].to_s)
-      
+
       # first, assume we'll not be running the event
       run_now = false
-      
+
       # check that it is in the horizon time
       unless event['date'] >= start_horizon and event['date'] < end_horizon
         debug and ( p 'Event is NOT in horizon...ignoring')
       else
         debug and ( p 'Event is in horizon...')
         run_now = true
-        
+
         # if has modifiers, check modifiers against states
         unless event['when_modifiers'].nil?
           debug and ( p 'Event has when modifiers. Checking they are all met...')
@@ -853,7 +867,7 @@ class LightWaveRF
             unless applicable_states.include? modifier
               debug and ( p 'Event when modifier not met: ' + modifier)
               run_now = false
-              break              
+              break
             end
           end
 
@@ -862,22 +876,22 @@ class LightWaveRF
             if applicable_states.include? modifier
               debug and ( p 'Event unless modifier not met: ' + modifier)
               run_now = false
-              break              
+              break
             end
-          end          
+          end
         end
-        
+
         # if we have determined the event should run, add to the run list
         if run_now
-            run_list.push event
-        end        
+          run_list.push event
+        end
       end
     end
-    
+
     # process the run list
     p '-----------------------'
     p 'Events to execute this run are: ' + run_list.to_s
-    
+
     triggered = [ ]
 
     run_list.each do | event |
@@ -895,11 +909,11 @@ class LightWaveRF
         triggered << [ event['room'], event['device'], event['state'] ]
       else
         p 'Executing device. Room: ' + event['room'] + ', Device: ' + event['device'] + ', State: ' + event['state']
-        result = self.send event['room'], event['device'], event['state'], debug        
+        result = self.send event['room'], event['device'], event['state'], debug
         sleep 1
-        triggered << [ event['room'], event['device'], event['state'] ]        
+        triggered << [ event['room'], event['device'], event['state'] ]
       end
-        self.log_timer_event event['type'], event['room'], event['device'], event['state'], result      
+        self.log_timer_event event['type'], event['room'], event['device'], event['state'], result
     end
 
     # update energy log
@@ -908,11 +922,11 @@ class LightWaveRF
     if triggered.length > 0
       debug and ( p triggered.length.to_s + ' events so annotating energy log too...' )
       title = 'timer'
-      text = triggered.map { |e| e.join " " }.join ", "
+      text = triggered.map { | e | e.join " " }.join ", "
     end
     self.energy title, text, debug
-    
-    self.log_timer_event 'run', nil, nil, nil, true    
+
+    self.log_timer_event 'run', nil, nil, nil, true
   end
 
 end

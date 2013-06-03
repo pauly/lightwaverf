@@ -67,5 +67,18 @@ class LightWaveRFTest < Test::Unit::TestCase
     assert_equal ['TV'], vars['gDeviceNames'][2]
   end
 
+  def test_to_seconds
+    assert_equal 60, LightWaveRF.to_seconds( 1 )
+    assert_equal 300, LightWaveRF.to_seconds( 5 )
+    assert_equal 60, LightWaveRF.to_seconds( '1' )
+    assert_equal 300, LightWaveRF.to_seconds( '5' )
+    assert_equal 300, LightWaveRF.to_seconds( ' 5 ' )
+    assert_equal 60, LightWaveRF.to_seconds( '1m' )
+    assert_equal 300, LightWaveRF.to_seconds( '5m' )
+    assert_equal 3600, LightWaveRF.to_seconds( '1h' )
+    assert_equal 3600, LightWaveRF.to_seconds( '1h' )
+    assert_equal 60, LightWaveRF.to_seconds( '60s' )
+  end
+
 end
 
