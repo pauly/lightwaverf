@@ -28,9 +28,16 @@ class LightWaveRF
   @timers = nil
 
   # Display usage info
-  def usage
+  def usage room = nil
     rooms = self.class.get_rooms self.get_config
-    'usage: lightwaverf ' + rooms.values.first['name'] + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
+    config = 'usage: lightwaverf ' + rooms.values.first['name'] + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
+    if room and rooms[room]
+      config += "\ntry: lightwaverf " + rooms[room]['name'] + ' all on'
+      rooms[room]['device'].each do | device |
+        config += "\ntry: lightwaverf " + rooms[room]['name'] + ' ' + device.first.to_s + ' on'
+      end
+    end
+    config
   end
 
   # Display help
@@ -389,13 +396,12 @@ class LightWaveRF
   #   state: (String)
   def send room = nil, device = nil, state = 'on', debug = false
     success = false
-    debug and (p 'Executing send on device: ' + device + ' in room: ' + room + ' with state: ' + state)
-    #debug and ( puts 'config is ' + self.get_config.to_s )
+    debug and ( p 'Executing send on device: ' + device + ' in room: ' + room + ' with state: ' + state )
     rooms = self.class.get_rooms self.get_config, debug
-    state = 'alloff' if (device.empty? and state == 'off')
+    state = 'alloff' if ( device.empty? and state == 'off' )
 
     unless rooms[room] and state
-      STDERR.puts self.usage
+      STDERR.puts self.usage( room );
     else
       # support for setting state for all devices in the room (recursive)
       if device == 'all'
@@ -415,7 +421,7 @@ class LightWaveRF
         debug and ( p 'response is ' + data )
         success = true
       else
-        STDERR.puts self.usage
+        STDERR.puts self.usage( room );
       end
     end
     success
@@ -493,7 +499,7 @@ class LightWaveRF
           success = true
         end
       else
-        STDERR.puts self.usage
+        STDERR.puts self.usage( room );
       end
     end
     success
@@ -516,7 +522,7 @@ class LightWaveRF
       debug and ( p 'command is ' + command )
       self.raw command
     else
-      STDERR.puts self.usage
+      STDERR.puts self.usage( room )
     end
   end
 
@@ -575,10 +581,15 @@ class LightWaveRF
 
     # determine the window to query
     now = Time.new
-    query_start = now - self.to_seconds( past )
-    query_end = now + self.to_seconds( future )
+    query_start = now - self.class.to_seconds( past )
+    query_end = now + self.class.to_seconds( future )
 
-    url = LightWaveRF.new.get_config['calendar'] + '?singleevents=true&start-min=' + query_start.strftime( '%FT%T%:z' ).sub('+', '%2B') + '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub('+', '%2B')
+    url = LightWaveRF.new.get_config['calendar']
+    # url += '?ctz=' + Time.new.zone
+    url += '?ctz=UTC'
+    url += '&singleevents=true'
+    url += '&start-min=' + query_start.strftime( '%FT%T%:z' ).sub('+', '%2B')
+    url += '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub('+', '%2B')
     debug and ( p url )
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
@@ -812,12 +823,12 @@ class LightWaveRF
     p '----------------'
     p "Running timers..."
     get_timer_cache
-    debug and ( p 'Timer list is: ' + YAML.dump(@timers))
+    debug and ( p 'Timer list is: ' + YAML.dump( @timers ))
 
     # get the current time and end interval time
     now = Time.new
     start_tm = now - now.sec
-    end_tm = start_tm + self.to_seconds( interval )
+    end_tm = start_tm + self.class.to_seconds( interval )
 
     # convert to datetimes
     start_horizon = DateTime.parse start_tm.to_s
@@ -835,9 +846,9 @@ class LightWaveRF
 
     # process each event
     @timers['events'].each do | event |
-      debug and ( p '----------------')
-      debug and ( p 'Processing event: ' + event.to_s)
-      debug and ( p 'Event time is: ' + event['date'].to_s)
+      debug and ( p '----------------' )
+      debug and ( p 'Processing event: ' + event.to_s )
+      debug and ( p 'Event time is: ' + event['date'].to_s )
 
       # first, assume we'll not be running the event
       run_now = false
