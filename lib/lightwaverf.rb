@@ -145,7 +145,7 @@ class LightWaveRF
   def get_timer_cache
     if ! @timers
       if ! File.exists? self.get_timer_cache_file
-        self.put_timer_cache
+        self.update_timers
       end
       @timers = YAML.load_file self.get_timer_cache_file
     end
