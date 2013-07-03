@@ -23,6 +23,8 @@ case ARGV[0]
     puts LightWaveRF.new.run_timers ARGV[1], ARGV[2]
   when 'update'
     puts LightWaveRF.new.update_config ARGV[1], ARGV[2]
+  when 'web'
+    puts LightWaveRF.new.build_web_page ARGV[1]
   else
     LightWaveRF.new.send ARGV[0], ARGV[1], ARGV[2], ARGV[3]
 end

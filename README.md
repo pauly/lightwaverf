@@ -66,20 +66,9 @@ Note that if you are already using the iPhone/other app, then your device pairin
     gem build lightwaverf.gemspec 
     sudo gem install ./lightwaverf-0.3.2.gem # or whatever the latest version is
 
-## How to install the website in this repo on a raspberry pi
+## Where did the website in this repo go?
 
-  * Install node https://gist.github.com/stolsma/3301813 (it takes an hour or so to build node on the pi.)
-  * Then I built in authentication using twitter too, so that the site can be up and running and public, but you'd need to be authenticated to see the usage graphs, so to do that register an app at dev.twitter.com/apps - don't think it matters what you use for any settings but when it's done go to the oauth settings get  the consumer key and consumer secret, copy config/default.sh.sample config/default.sh and paste those values in. Then there are a couple of depencies I think so
-
-    npm install
-
-  * Then start the site with
-
-    source config/default.sh && nohup node app.js &
-
-  * hope that works and the site would then be running on port 3000 on your pi's ip address.
-
-  * Not sure how stable it is but there is a file called "node" in the repo that you can copy into /etc/init.d/ and it should restart the server when the pi restarts. 
+It is now a submodule in the app folder, though I'm not supporting it right now I'm working on a very simple static page instead.
 
 # Usage
 
@@ -304,6 +293,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.5   build a web page
   * v 0.4   super timers!
   * v 0.3   changed the format of the config file, adding configure option, and loading config from lightwavehost.co.uk
   * v 0.3.2 eliminated need to specify WiFi Link IP address (host) in config, added option to update WiFi Link timezone and added ability to turn off all devices in a room
