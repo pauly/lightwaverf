@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   end
   s.authors     = [ 'Paul Clarke', 'Ian Perrin', 'Julian McLean' ]
   s.email       = 'pauly@clarkeology.com'
-  s.files       = [ 'lib/lightwaverf.rb' ]
+  s.files       = [ 'lib/lightwaverf.rb', 'app/views/_graphs.ejs' ]
   s.homepage    = 'http://www.clarkeology.com/wiki/lightwaverf+ruby'
   s.executables << 'lightwaverf'
   s.executables << 'lightwaverf-config-json'

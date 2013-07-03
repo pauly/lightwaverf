@@ -23,6 +23,7 @@ class LightWaveRF
 
   @config_file = nil
   @log_file = nil
+  @summary_file = nil
   @log_timer_file = nil
   @config = nil
   @timers = nil
@@ -106,6 +107,11 @@ class LightWaveRF
   # Log file getter
   def get_log_file
     @log_file || File.expand_path('~') + '/lightwaverf.log'
+  end
+
+  # Summary file getter
+  def get_summary_file
+    @summary_file || File.expand_path('~') + '/lightwaverf-summary.json'
   end
 
   # Timer log file getter
@@ -940,103 +946,93 @@ class LightWaveRF
     self.log_timer_event 'run', nil, nil, nil, true
   end
 
+  def self.get_contents file
+    file = File.open file, 'r'
+    content = file.read
+    file.close
+    content
+  end
+
   def build_web_page debug = nil
+    js = self.class.get_contents( File.dirname( __FILE__ ) + '/../app/views/_graphs.ejs' )
+    summary = self.class.get_contents self.get_summary_file
+    js.gsub! '<%- summary %>', summary
+    intro = 'Intro goes here...'
+    help = self.help
     html = <<-end
       <html>
         <head>
           <title>Lightwaverf</title>
+	  <style type="text/css">
+	    div#energy_chart { width: 800px; height: 400px; }
+	    div#gauge_div { width: 100px; height: 100px; }
+	  </style>
 	</head>
         <body>
-	  <h1>Lightwaverf</h1>
-	  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-	  <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-	  <script type="text/javascript">
-            #{js}
-	  </script>
+          <div class="container">
+            <div class="row">
+              <div class="col">
+	        <h1>Lightwaverf</h1>
+	        <p class="intro">#{intro}</p>
+                <div id="energy_chart"></div>
+	        <p class="help"><pre>#{help}</pre></p>
+	        #{js}
+	      </div>
+              <div class="col">
+                <div class="col" id="gauge_div"></div>
+	      </div>
+	    </div>
+	  </div>
 	</body>
       </html>
     end
   end
 
-  def js debug = nil
-    js = <<-end
-      var gauge, gauge_data, gauge_options;
-      google.load( 'visualization', '1.0', { packages: [ 'corechart', 'gauge', 'annotatedtimeline' ] } );
-      google.setOnLoadCallback( function ( ) {
-	var energy_data = new google.visualization.DataTable( );
-	energy_data.addColumn( 'date', 'Date' );
-	energy_data.addColumn( 'number', 'Electricity used' );
-	energy_data.addColumn( 'string', 'title1' );
-	energy_data.addColumn( 'string', 'text1' );
-	if (!Array.prototype.map) {
-	  Array.prototype.map = function(callback, thisArg) {
-	    var T, A, k;
-	    if (this == null) {
-	      throw new TypeError(" this is null or not defined");
-	    }
-	    var O = Object(this);
-	    var len = O.length >>> 0;
-	    if (typeof callback !== "function") {
-	      throw new TypeError(callback + " is not a function");
-	    }
-	    if (thisArg) {
-	      T = thisArg;
-	    }
-	    A = new Array(len);
-	    k = 0;
-	    while(k < len) {
-	      var kValue, mappedValue;
-	      if (k in O) {
-		kValue = O[ k ];
-		mappedValue = callback.call(T, kValue, k, O);
-		A[ k ] = mappedValue;
-	      }
-	      k++;
-	    }
-	    return A;
-	  };      
-	}
-	var raw_data = <%- summary %>;
-	var start_date = raw_data[0][0];
-	energy_data.addRows( raw_data.map( function ( e ) {
-	  if ( e[0] !== start_date ) e[0] += start_date;
-	  e[0] = new Date( 1000 * e[0] ); // as it is now a timestamp
-	  // var d = '' + e[0];
-	  // e[0] = new Date( '20' + d[0] + d[1] + '-' + d[2] + d[3] + '-' + d[4] + d[5] + ' ' + d[6] + d[7] + ':' + d[8] + d[9] );
-	  e[1] = e[1] * 10;
-	  e[2] = e[2] || '';
-	  e[3] = e[3] || '';
-	  return e;
-	} ));
-	var chart = new google.visualization.AnnotatedTimeLine( document.getElementById( 'energy_chart' ));
-	chart.draw( energy_data, { displayAnnotations: true, title: '24 hours electricity usage' } );
-      
-	gauge = new google.visualization.Gauge( document.getElementById( 'gauge_div' ));
-	gauge_data = google.visualization.arrayToDataTable( [ ["Label", "Value"], ["Electric", raw_data.pop[1] ] ] );
-	gauge_options = {
-	  width: '200',
-	  height: '200',
-	  redFrom: 90,
-	  redTo: 100,
-	  yellowFrom: 75,
-	  yellowTo: 90,
-	  minorTicks: 5
-	};
-	gauge.draw( gauge_data, gauge_options );
-      } );
-      $( function ( ) {
-	$('dt a').click( function ( ) {
-	  $(this).parent( ).next('dd').slideDown( );
-	  return false;
-	} );
-	$('a.ajax').click( function ( ) {
-	  $a = $(this);
-	  $.get( $a.attr('href'), function ( js ) {
-	    alert( js.result || $a.text( ));
-	  } );
-	  return false;
-	} );
-      } );
+
+  # summarise the log data for ease of use
+  def summarise days = 7, debug = nil
+    days = days.to_i
+    data = [ ]
+    daily = { }
+    start_date = 0
+    d = nil
+    File.open( self.get_log_file, 'r' ).each_line do | line |
+      line = JSON.parse( line )
+      if line and line['timestamp']
+	new_line = []
+	d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
+	ts = Time.parse( line['timestamp'] ).strftime '%s'
+	ts = ts.to_i
+	if start_date > 0
+	  ts = ts - start_date
+	else
+	  start_date = ts
+	end
+	new_line << ts
+	new_line << line['message']['usage'].to_i / 10
+	if line['message']['annotation'] and line['message']['annotation']['title'] and line['message']['annotation']['text']
+	  new_line << line['message']['annotation']['title']
+	  new_line << line['message']['annotation']['text']
+	end
+	data << new_line
+	daily[d] = line['message']['today']
+      end
+    end
+    debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
+    data = data.last( 60 * 24 * days )
+    debug and ( puts 'now got ' + data.length.to_s + ' lines in the log ( 60 * 24 * ' + days.to_s + ' = ' + ( 60 * 24 * days ).to_s + ' )' )
+    if data[0][0] != start_date
+      data[0][0] += start_date
+    end
+    summary_file = self.get_summary_file
+    File.open( summary_file, 'w' ) do |file|
+      file.write data.to_s
+    end
+    File.open( summary_file.gsub( 'summary', 'daily' ), 'w' ) do |file|
+      file.write daily.to_s
+    end
+    File.open( summary_file.gsub( 'summary', 'daily.' + d ), 'w' ) do |file|
+      file.write daily.select { |key| key == daily.keys.last }.to_s
     end
   end
 

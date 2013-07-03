@@ -63,12 +63,17 @@ Note that if you are already using the iPhone/other app, then your device pairin
     lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
 ## How to build the gem from the source
-    gem build lightwaverf.gemspec 
-    sudo gem install ./lightwaverf-0.3.2.gem # or whatever the latest version is
+    gem build lightwaverf.gemspec && sudo gem install ./lightwaverf-0.5.0.gem # or whatever the latest version is
 
 ## Where did the website in this repo go?
 
-It is now a submodule in the app folder, though I'm not supporting it right now I'm working on a very simple static page instead.
+It is now a submodule in the app folder, though I'm not supporting it right. Instead build a simple one pager with:
+
+    lightwaverf summarise && lightwaverf web > /var/www/lightwaverf.html
+
+That presumes you already have a web server running and the document root is /var/www
+
+Todo: make that web page configurable. If you don't have the energy monitor there is not much on that web page for you right now.
 
 # Usage
 
