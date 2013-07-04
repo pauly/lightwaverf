@@ -1,6 +1,4 @@
-# lightwaverf
-
-# Overview
+# Lightwaverf - Overview
 
 LightWaveRF wifi link communication for command line home automation. A ruby gem for lightwaverf home automation. Interact with lightwaverf wifi link from code or the command line. Control your lights, heating, sockets etc. Also set up timers using a google calendar and log energy usage.
 
@@ -72,8 +70,15 @@ It is now a submodule in the app folder, though I'm not supporting it right. Ins
     lightwaverf summarise && lightwaverf web > /var/www/lightwaverf.html
 
 That presumes you already have a web server running and the document root is /var/www
+Here is some sample output: http://pauly.github.io/lightwaverf/
 
-Todo: make that web page configurable. If you don't have the energy monitor there is not much on that web page for you right now.
+Set up the crontab to rebuild the web page regularly
+
+    # crontab -e
+    # rebuild the website every hour, on the hour
+    0 * * * * /usr/local/bin/lightwaverf web 5 > /var/www/lightwaverf.html
+
+Todo: make that web page configurable. Any suggestions? If you don't have the energy monitor there is not much on that web page for you right now.
 
 # Usage
 
@@ -180,10 +185,10 @@ This functionality allows you to create simple or complex schedules to automatic
 ## How to set up the google calendar timers
 
   * make yourself a google calendar http://www.google.com/calendar
-    * click on my calendars
+    * click on "my calendars"
     * click on "create a new calendar"
     * add some events called "lounge light"
-    * get the private address address of your calendar by going to calendar settings and clicking on the 'XML' button at the bottom for the private address
+    * get the private address address of your calendar by going to calendar settings and clicking on the XML button at the bottom for the private address
     * put this private address of the calendar into the lightwaverf-config.yml file
     * setup crontab (see below)    
 
@@ -196,8 +201,8 @@ The timer function utilises 2 separate functions that need scheduling with cron 
 
 These processes can be scheduled in cron at different rates. It is unlikely that you will need to run the update timers function very often (unless you want to add new entries in the very near future), but the run timers function should be scheduled fairly frequently to make sure that devices are set near to the requested time. I run the update process every 2 hours, and the run process every 5 minutes as follows:
 
-    59 */2 * * * /usr/local/rvm/gems/ruby-1.9.3-p385/bin/lightwaverf update_timers > /tmp/timer.out
-    */5 * * * * /usr/local/rvm/gems/ruby-1.9.3-p385/bin/lightwaverf run_timers 5 > /tmp/timer.out
+    59 */2 * * * /usr/local/bin/lightwaverf update_timers > /tmp/timer.out
+    */5 * * * * /usr/local/bin/lightwaverf run_timers 5 > /tmp/timer.out
 
 Note that following options can be provided to the update_timers function:
     

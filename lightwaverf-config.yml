@@ -43,12 +43,4 @@ room:
 - name: landing
   device:
   - light
-calendar: 'https://www.google.com/calendar/feeds/sgvkej0k4gdv59eu3adi6gddr8%40group.calendar.google.com/private-649b00dd25c2f90b7cfceb519b8ac2b5/basic'
-sequence:
-  bed:
-  - - our
-    - light
-    - 'off'
-  - - our
-    - lights
-    - 'off'
+calendar: 'https://www.google.com/calendar/feeds/aar79qh62fej54nprq6334s7ck%40group.calendar.google.com/public/basic'

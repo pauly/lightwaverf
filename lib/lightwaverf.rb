@@ -733,24 +733,24 @@ class LightWaveRF
           debug and ( p "Timezone: " + timezone)
 
           # convert to datetimes
-          start_dt = DateTime.parse(start_date.strip + ' ' + start_time.strip + ' ' + timezone.strip)
-          end_dt = DateTime.parse(end_date.strip + ' ' + end_time.strip + ' ' + timezone.strip)
+          start_dt = DateTime.parse( start_date.strip + ' ' + start_time.strip + ' ' + timezone.strip )
+          end_dt = DateTime.parse( end_date.strip + ' ' + end_time.strip + ' ' + timezone.strip )
 
           # apply time modifier if it exists
           if time_modifier != 0
-            debug and ( p "Adjusting timings by: " + time_modifier.to_s)
-            start_dt = ((start_dt.to_time) + time_modifier*60).to_datetime
-            end_dt = ((end_dt.to_time) + time_modifier*60).to_datetime
+            debug and ( p "Adjusting timings by: " + time_modifier.to_s )
+            start_dt = (( start_dt.to_time ) + time_modifier * 60 ).to_datetime
+            end_dt = (( end_dt.to_time ) + time_modifier * 60 ).to_datetime
           end
 
-          debug and ( p "Start datetime: " + start_dt.to_s)
-          debug and ( p "End datetime: " + end_dt.to_s)
+          debug and ( p "Start datetime: " + start_dt.to_s )
+          debug and ( p "End datetime: " + end_dt.to_s )
 
           # populate the dates
           event['date'] = start_dt
           # handle device entries without explicit on/off state
           if event['type'] == 'device' and ( event['state'].nil? or ( event['state'] != 'on' and event['state'] != 'off' ))
-            debug and ( p "Duplicating event without explicit on/off state...")
+            debug and ( p "Duplicating event without explicit on/off state..." )
             # if not state was given, assume we meant 'on'
             if event['state'].nil?
               event['state'] = 'on'
@@ -954,17 +954,39 @@ class LightWaveRF
   end
 
   def build_web_page debug = nil
-    js = self.class.get_contents( File.dirname( __FILE__ ) + '/../app/views/_graphs.ejs' )
+
+    rooms = self.class.get_rooms self.get_config
+    list = '<dl>'
+    config = 'usage: lightwaverf ' + rooms.values.first['name'] + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
+    rooms.each do | name, room |
+      debug and ( puts name + ' is ' + room.to_s )
+      list += '<dt>' + name + '</dt><dd><ul>'
+      room['device'].each do | device |
+      	debug and ( puts 'device is ' + device.to_s )
+      	list += '<li>' + room['name'].to_s + ' ' + device.first.to_s + '</li>'
+      end
+      list += '</ul></dd>'
+    end
+    list += '</dl>'
+
     summary = self.class.get_contents self.get_summary_file
-    js.gsub! '<%- summary %>', summary
-    intro = 'Intro goes here...'
-    help = self.help
+    js = self.class.get_contents( File.dirname( __FILE__ ) + '/../app/views/_graphs.ejs' ).gsub( '<%- summary %>', summary )
+    date = Time.new.to_s
+    title = self.get_config.has_key?('title') ? self.get_config['title'] : ( 'Lightwaverf energy stats ' + date )
+    intro = <<-end
+        Sample page generated #{date} with <code>lightwaverf web</code>.
+        Check out <a href="https://github.com/pauly/lightwaverf">the new simplified repo</a> for details
+        or <a href="https://rubygems.org/gems/lightwaverf">gem install lightwaverf && lightwaverf web</a>...
+        <br />@todo make a decent, useful, simple, configurable web page...
+    end
+    help = list
     html = <<-end
       <html>
         <head>
-          <title>Lightwaverf</title>
+          <title>#{title}</title>
 	  <style type="text/css">
-	    div#energy_chart { width: 800px; height: 400px; }
+	    body { font-family: arial, verdana, sans-serif; }
+	    div#energy_chart { width: 800px; height: 600px; }
 	    div#gauge_div { width: 100px; height: 100px; }
 	  </style>
 	</head>
@@ -972,10 +994,12 @@ class LightWaveRF
           <div class="container">
             <div class="row">
               <div class="col">
-	        <h1>Lightwaverf</h1>
+	        <h1>#{title}</h1>
 	        <p class="intro">#{intro}</p>
                 <div id="energy_chart"></div>
-	        <p class="help"><pre>#{help}</pre></p>
+		<h2>Rooms and devices</h2>
+		<p>@todo make these links to control the devices...</p>
+	        <p class="help">#{help}</p>
 	        #{js}
 	      </div>
               <div class="col">
@@ -983,11 +1007,11 @@ class LightWaveRF
 	      </div>
 	    </div>
 	  </div>
+	  <p>By <a href="http://www.clarkeology.com/blog/">Paul Clarke</a>, a work in progress.</p>
 	</body>
       </html>
     end
   end
-
 
   # summarise the log data for ease of use
   def summarise days = 7, debug = nil
@@ -1015,7 +1039,9 @@ class LightWaveRF
 	  new_line << line['message']['annotation']['text']
 	end
 	data << new_line
-	daily[d] = line['message']['today']
+	if line['message']['today'] > daily[d]['today']
+          daily[d] = line['message']
+	end
       end
     end
     debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
@@ -1028,10 +1054,11 @@ class LightWaveRF
     File.open( summary_file, 'w' ) do |file|
       file.write data.to_s
     end
-    File.open( summary_file.gsub( 'summary', 'daily' ), 'w' ) do |file|
+    # @todo fix the daily stats, every night it reverts to the minimum value...
+    File.open( summary_file.gsub( 'summary', 'daily' ), 'w' ) do | file |
       file.write daily.to_s
     end
-    File.open( summary_file.gsub( 'summary', 'daily.' + d ), 'w' ) do |file|
+    File.open( summary_file.gsub( 'summary', 'daily.' + d ), 'w' ) do | file |
       file.write daily.select { |key| key == daily.keys.last }.to_s
     end
   end
