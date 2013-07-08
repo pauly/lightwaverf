@@ -546,10 +546,14 @@ class LightWaveRF
         data['message']['annotation'] = { 'title' => title.to_s, 'text' => note.to_s }
       end
       debug and ( p data )
-      File.open( self.get_log_file, 'a' ) do | f |
-        f.write( data.to_json + "\n" )
+      begin
+      	File.open( self.get_log_file, 'a' ) do | f |
+          f.write( data.to_json + "\n" )
+      	end
+      	data['message']
+      rescue
+	puts 'error writing to log'
       end
-      data['message']
     end
   end
 
@@ -947,10 +951,14 @@ class LightWaveRF
   end
 
   def self.get_contents file
-    file = File.open file, 'r'
-    content = file.read
-    file.close
-    content
+    begin
+      file = File.open file, 'r'
+      content = file.read
+      file.close
+    rescue
+      STDERR.puts 'cannot open ' + file
+    end
+    content.to_s
   end
 
   def build_web_page debug = nil
@@ -996,7 +1004,12 @@ class LightWaveRF
               <div class="col">
 	        <h1>#{title}</h1>
 	        <p class="intro">#{intro}</p>
-                <div id="energy_chart"></div>
+                <div id="energy_chart">
+                  Not seeing an energy chart here?
+                  Maybe not working in your device yet, sorry.
+                  This uses google chart api which may generate FLASH :-(
+                  Try in a web browser.
+                </div>
 		<h2>Rooms and devices</h2>
 		<p>@todo make these links to control the devices...</p>
 	        <p class="help">#{help}</p>
@@ -1039,7 +1052,7 @@ class LightWaveRF
 	  new_line << line['message']['annotation']['text']
 	end
 	data << new_line
-	if line['message']['today'] > daily[d]['today']
+	if ( ! daily[d] or line['message']['today'] > daily[d]['today'] )
           daily[d] = line['message']
 	end
       end
@@ -1047,8 +1060,11 @@ class LightWaveRF
     debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
     data = data.last( 60 * 24 * days )
     debug and ( puts 'now got ' + data.length.to_s + ' lines in the log ( 60 * 24 * ' + days.to_s + ' = ' + ( 60 * 24 * days ).to_s + ' )' )
-    if data[0][0] != start_date
-      data[0][0] += start_date
+    if data and data[0]
+      debug and ( puts 'data[0] is ' + data[0].to_s )
+      if data[0][0] != start_date
+        data[0][0] += start_date
+      end
     end
     summary_file = self.get_summary_file
     File.open( summary_file, 'w' ) do |file|
