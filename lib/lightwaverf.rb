@@ -310,8 +310,6 @@ class LightWaveRF
           m += 1
         end
       end
-      # add 'all off' special mood
-      rooms[room['name']]['mood']['alloff'] = 'Fa'
       r += 1
     end
     rooms
@@ -322,7 +320,6 @@ class LightWaveRF
   # Example:
   #   >> LightWaveRF.new.state 'on' # 'F1'
   #   >> LightWaveRF.new.state 'off' # 'F0'
-  #   >> LightWaveRF.new.state 'alloff' # 'Fa'
   #
   # Arguments:
   #   state: (String)
@@ -333,11 +330,10 @@ class LightWaveRF
     case state
       when 'off'
         state = 'F0'
-      when 'alloff'
-        state = 'Fa'
+      when 0
+        state = 'F0'
       when 'on'
         state = 'F1'
-      # preset dim levels
       when 'low'
         state = 'FdP8'
       when 'mid'
@@ -396,6 +392,9 @@ class LightWaveRF
   #   >> LightWaveRF.new.send 'our', 'light', 'on'
   #   >> LightWaveRF.new.send 'our', '', 'off'
   #
+  # This method was too confusing, got rid of "alloff"
+  # it can be done with "[room] all off" anyway
+  #
   # Arguments:
   #   room: (String)
   #   device: (String)
@@ -404,9 +403,9 @@ class LightWaveRF
     success = false
     debug and ( p 'Executing send on device: ' + device + ' in room: ' + room + ' with state: ' + state )
     rooms = self.class.get_rooms self.get_config, debug
-    state = 'alloff' if ( device.empty? and state == 'off' )
 
     unless rooms[room] and state
+      debug and ( p 'Missing room (' + room.to_s + ') or state (' + state.to_s + ')' );
       STDERR.puts self.usage( room );
     else
       # support for setting state for all devices in the room (recursive)
@@ -419,7 +418,7 @@ class LightWaveRF
         end
         success = true
       # process single device
-      elsif state == 'alloff' || (device and rooms[room]['device'][device])
+      elsif device and rooms[room]['device'][device]
         state = self.class.get_state state
         command = self.command rooms[room], device, state
         debug and ( p 'command is ' + command )
@@ -965,13 +964,13 @@ class LightWaveRF
 
     rooms = self.class.get_rooms self.get_config
     list = '<dl>'
-    config = 'usage: lightwaverf ' + rooms.values.first['name'] + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
     rooms.each do | name, room |
       debug and ( puts name + ' is ' + room.to_s )
-      list += '<dt>' + name + '</dt><dd><ul>'
+      list += '<dt><a>' + name + '</a></dt><dd><ul>'
       room['device'].each do | device |
-      	debug and ( puts 'device is ' + device.to_s )
-      	list += '<li>' + room['name'].to_s + ' ' + device.first.to_s + '</li>'
+	# link ideally relative to avoid cross domain issues
+	link = '/room/' + room['name'].to_s + '/' + device.first.to_s
+      	list += '<li><a class="ajax off" href="' + link + '">' + room['name'].to_s + ' ' + device.first.to_s + '</a></li>'
       end
       list += '</ul></dd>'
     end
@@ -996,6 +995,9 @@ class LightWaveRF
 	    body { font-family: arial, verdana, sans-serif; }
 	    div#energy_chart { width: 800px; height: 600px; }
 	    div#gauge_div { width: 100px; height: 100px; }
+	    dd { display: none; }
+	    .off, .on:hover { padding-right: 18px; background: url(lightning_delete.png) no-repeat top right; }
+	    .on, .off:hover { padding-right: 18px; background: url(lightning_add.png) no-repeat top right; }
 	  </style>
 	</head>
         <body>
@@ -1080,4 +1082,3 @@ class LightWaveRF
   end
 
 end
-
