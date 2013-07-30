@@ -100,17 +100,13 @@ You can also set the state for all devices in a room (based on you configuration
     
 Note that this sets the state on each device configured in that room by looping through the configuration. There will be a short pause between each device being set to ensure that all the commands are successful.
 
-If you declare the state as 'alloff', the device name is ignored and all devices in that room are switched to off
-
-    lightwaverf lounge light alloff
-    
 Tip: I have found that you can actually pair a single device to 2 different device 'slots' in the same room. So, for example a light could be in slot 1 (D1) and also slot 4 (D4). This allows you to be a bit clever and pair each device to both its own slot and to a 'common' slot, such as this:
 
     Main light D1 & D4
     Side light D2 & D4
     Spotlights D3 & D4
     
-This means that you can set up a 'device' in slot D4 which will actually control all the devices at once. Just remember not to to call it 'all' or 'alloff' as these are used as keywords in the code to do the same thing in a different way as per the above.
+This means that you can set up a 'device' in slot D4 which will actually control all the devices at once. Just remember not to to call it 'all' as this is used as a keyword in the code to do the same thing in a different way as per the above.
 
 ## Mood support
 
@@ -127,19 +123,6 @@ Moods are now supported if they are added to the lightwaverf-config.yml file as 
 To set a mood:
 
     lightwaverf mood living movie
-    
-You can also execute the special 'alloff' mood to turn off all devices in that room:
-    
-    lightwaverf mood living alloff
-    
-Finally, you can also set any state for all the devices in the room by prefixing any supported state with 'all':
-    
-    lightwaverf mood living allon
-    lightwaverf mood living allfull
-    lightwaverf mood living alllow
-    lightwaverf mood living all50
-    
-Note that this sets the state on each device configured in that room by looping through the configuration. There will be a short pause between each device being set to ensure that all the commands are successful.
     
 To (re)learn a mood with the current device settings:
 
@@ -159,7 +142,7 @@ And moods are supported in google calendar timers by creating an event with the 
 
     mood living movie
 
-Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time (e.g. with the special 'alloff' mood)
+Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time
 
 ## Sequence support
 
@@ -174,9 +157,9 @@ Note that pauses can be added (in seconds)
         - movie
       - - pause
         - 60
-      - - mood
-        - living
-        - alloff
+      - - living
+        - all
+        - off
 
 # Automated timers (via Google Calendar)
 
@@ -237,9 +220,8 @@ Once setup, you can create various entries to control as follows:
 You can also set moods using the calendar by creating an event with the following syntax:
 
     mood living movie - set movie mode in the lounge
-    mood living alloff - turn everything off in the lounge
-    mood living allon - turn everything on in the lounge
-    mood all alloff - turn everything off in all rooms
+    living all off - turn everything off in the lounge
+    living all on - turn everything on in the lounge
     
 And you can execute sequences using the calendar by creating an eventas follows:
 
@@ -276,6 +258,10 @@ You can also adjust the run time of the event (relative to the actual gcal event
     
 Note that this is useful when using sunset/sunrise based timers (see below)
 
+You can also adjust the run time of the event by a random number of minutes as follows:
+
+    lounge light random 60 - this will adjust the start/end times of the event randomly within the 60 minutes around the actual gcal entry time (ie plus or minus 30 minutes)
+
 Also note that you can only modify the time within the caching time you setup in the cron job for update timers. i.e. you cannot modify an event ahead by 2 hours but only cache historically by 1 hour, as the event will have been purged from the cache by the time you want it run. You will have to configure the caching period on the update timers function to be at least as 'wide' as the biggest time modifier you are using.
 
 ## Sunset/sunrise
@@ -299,10 +285,10 @@ Here are some ideas on things to automate with the timers:
 * Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
 * Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
 * Improvement: Possibly add some info about which states are currently applicable to the timer log
-* Improvement: Consider adding a 'random' time shift modifier to make holiday security lights more 'realistic'
 
 # History
 
+  * v 0.6   randomised timers
   * v 0.5   build a web page
   * v 0.4   super timers!
   * v 0.3   changed the format of the config file, adding configure option, and loading config from lightwavehost.co.uk

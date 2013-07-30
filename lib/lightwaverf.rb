@@ -4,7 +4,6 @@
 # Get rid of references in yaml cache file - use dup more? Or does it not matter?
 # Cope with events that start and end in the same run?
 # Add info about states to timer log
-# Consider adding a 'random' time shift modifier to make holiday security lights more 'realistic'
 # Build / update cron job automatically
 
 
@@ -692,8 +691,8 @@ class LightWaveRF
           time_modifier = 0
           if command_length > modifier_start
             debug and ( p "May have modifiers..." )
-            when_modifiers = Array.new
-            unless_modifiers = Array.new
+            when_modifiers = [ ]
+            unless_modifiers = [ ]
             modifier_count = command_length - modifier_start
             debug and ( p "Count of modifiers is " + modifier_count.to_s )
             for i in modifier_start..(command_length-1)
@@ -718,7 +717,6 @@ class LightWaveRF
           end
 
           # parse the date string
-          debug and ( p "Time string is: " + e.elements['summary'].text)
           event_time = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)&nbsp;\n(.*)<br>(.*)/.match e.elements['summary'].text
           debug and ( p "Event times are: " + event_time.to_s )
           start_date = event_time[1].to_s
@@ -729,11 +727,14 @@ class LightWaveRF
           if end_date == '' or end_date.nil? # copy start date to end date if it wasn't given (as the same date)
             end_date = start_date
           end
-          debug and ( p "Start date: " + start_date)
-          debug and ( p "Start time: " + start_time)
-          debug and ( p "End date: " + end_date)
-          debug and ( p "End time: " + end_time)
-          debug and ( p "Timezone: " + timezone)
+
+          time_modifier += self.class.variance e.elements['title'].text
+
+          debug and ( p 'Start date: ' + start_date )
+          debug and ( p 'Start time: ' + start_time )
+          debug and ( p 'End date: ' + end_date )
+          debug and ( p 'End time: ' + end_time )
+          debug and ( p 'Timezone: ' + timezone )
 
           # convert to datetimes
           start_dt = DateTime.parse( start_date.strip + ' ' + start_time.strip + ' ' + timezone.strip )
@@ -741,19 +742,19 @@ class LightWaveRF
 
           # apply time modifier if it exists
           if time_modifier != 0
-            debug and ( p "Adjusting timings by: " + time_modifier.to_s )
+            debug and ( p 'Adjusting timings by: ' + time_modifier.to_s )
             start_dt = (( start_dt.to_time ) + time_modifier * 60 ).to_datetime
             end_dt = (( end_dt.to_time ) + time_modifier * 60 ).to_datetime
           end
 
-          debug and ( p "Start datetime: " + start_dt.to_s )
-          debug and ( p "End datetime: " + end_dt.to_s )
+          debug and ( p 'Start datetime: ' + start_dt.to_s )
+          debug and ( p 'End datetime: ' + end_dt.to_s )
 
           # populate the dates
           event['date'] = start_dt
           # handle device entries without explicit on/off state
           if event['type'] == 'device' and ( event['state'].nil? or ( event['state'] != 'on' and event['state'] != 'off' ))
-            debug and ( p "Duplicating event without explicit on/off state..." )
+            debug and ( p 'Duplicating event without explicit on/off state...' )
             # if not state was given, assume we meant 'on'
             if event['state'].nil?
               event['state'] = 'on'
@@ -765,7 +766,7 @@ class LightWaveRF
             events.push end_event
           # create state plus start and end events if a state
           elsif event['type'] == 'state'
-            debug and ( p "Processing state : " + event['state'])
+            debug and ( p 'Processing state : ' + event['state'] )
             # create state
             state = Hash.new
             state['name'] = event['state']
@@ -808,8 +809,20 @@ class LightWaveRF
       self.log_timer_event 'update', nil, nil, nil, true
 
     else
-        self.log_timer_event 'update', nil, nil, nil, false
+      self.log_timer_event 'update', nil, nil, nil, false
     end
+  end
+
+  # Return the randomness value that may be in the event title
+  def self.variance title = '', debug = nil
+    randomness = /random\w* (\d+)/.match title
+    if randomness
+      n = randomness[1].to_i
+      debug and ( p 'randomness is ' + n.to_s )
+      return rand( n ) - ( n / 2 )
+    end
+    debug and ( p 'no randomness return 0' )
+    return 0
   end
 
   # Convert a string to seconds, assume it is in minutes
@@ -830,7 +843,7 @@ class LightWaveRF
 
   def run_timers interval = 5, debug = false
     p '----------------'
-    p "Running timers..."
+    p 'Running timers...'
     get_timer_cache
     debug and ( p 'Timer list is: ' + YAML.dump( @timers ))
 
@@ -874,7 +887,7 @@ class LightWaveRF
           debug and ( p 'Event has when modifiers. Checking they are all met...')
 
           # determine which states apply at the time of the event
-          applicable_states = Array.new
+          applicable_states = [ ]
           @timers['states'].each do | state |
             if event['date'] >= state['start'] and event['date'] < state['end']
               applicable_states.push state['name']
@@ -942,7 +955,7 @@ class LightWaveRF
     if triggered.length > 0
       debug and ( p triggered.length.to_s + ' events so annotating energy log too...' )
       title = 'timer'
-      text = triggered.map { | e | e.join " " }.join ", "
+      text = triggered.map { | e | e.join ' ' }.join ', '
     end
     self.energy title, text, debug
 
@@ -968,8 +981,8 @@ class LightWaveRF
       debug and ( puts name + ' is ' + room.to_s )
       list += '<dt><a>' + name + '</a></dt><dd><ul>'
       room['device'].each do | device |
-	# link ideally relative to avoid cross domain issues
-	link = '/room/' + room['name'].to_s + '/' + device.first.to_s
+	      # link ideally relative to avoid cross domain issues
+	      link = '/room/' + room['name'].to_s + '/' + device.first.to_s
       	list += '<li><a class="ajax off" href="' + link + '">' + room['name'].to_s + ' ' + device.first.to_s + '</a></li>'
       end
       list += '</ul></dd>'
@@ -981,49 +994,49 @@ class LightWaveRF
     date = Time.new.to_s
     title = self.get_config.has_key?('title') ? self.get_config['title'] : ( 'Lightwaverf energy stats ' + date )
     intro = <<-end
-        Sample page generated #{date} with <code>lightwaverf web</code>.
-        Check out <a href="https://github.com/pauly/lightwaverf">the new simplified repo</a> for details
-        or <a href="https://rubygems.org/gems/lightwaverf">gem install lightwaverf && lightwaverf web</a>...
-        <br />@todo make a decent, useful, simple, configurable web page...
+      Sample page generated #{date} with <code>lightwaverf web</code>.
+      Check out <a href="https://github.com/pauly/lightwaverf">the new simplified repo</a> for details
+      or <a href="https://rubygems.org/gems/lightwaverf">gem install lightwaverf && lightwaverf web</a>...
+      <br />@todo make a decent, useful, simple, configurable web page...
     end
     help = list
     html = <<-end
       <html>
         <head>
           <title>#{title}</title>
-	  <style type="text/css">
-	    body { font-family: arial, verdana, sans-serif; }
-	    div#energy_chart { width: 800px; height: 600px; }
-	    div#gauge_div { width: 100px; height: 100px; }
-	    dd { display: none; }
-	    .off, .on:hover { padding-right: 18px; background: url(lightning_delete.png) no-repeat top right; }
-	    .on, .off:hover { padding-right: 18px; background: url(lightning_add.png) no-repeat top right; }
-	  </style>
-	</head>
+	        <style type="text/css">
+	          body { font-family: arial, verdana, sans-serif; }
+	          div#energy_chart { width: 800px; height: 600px; }
+	          div#gauge_div { width: 100px; height: 100px; }
+	          dd { display: none; }
+	          .off, .on:hover { padding-right: 18px; background: url(lightning_delete.png) no-repeat top right; }
+	          .on, .off:hover { padding-right: 18px; background: url(lightning_add.png) no-repeat top right; }
+	        </style>
+	      </head>
         <body>
           <div class="container">
             <div class="row">
               <div class="col">
-	        <h1>#{title}</h1>
-	        <p class="intro">#{intro}</p>
+	              <h1>#{title}</h1>
+	              <p class="intro">#{intro}</p>
                 <div id="energy_chart">
                   Not seeing an energy chart here?
                   Maybe not working in your device yet, sorry.
                   This uses google chart api which may generate FLASH :-(
                   Try in a web browser.
                 </div>
-		<h2>Rooms and devices</h2>
-		<p>@todo make these links to control the devices...</p>
-	        <p class="help">#{help}</p>
-	        #{js}
-	      </div>
+		            <h2>Rooms and devices</h2>
+		            <p>@todo make these links to control the devices...</p>
+	              <p class="help">#{help}</p>
+	              #{js}
+	            </div>
               <div class="col">
                 <div class="col" id="gauge_div"></div>
-	      </div>
-	    </div>
-	  </div>
-	  <p>By <a href="http://www.clarkeology.com/blog/">Paul Clarke</a>, a work in progress.</p>
-	</body>
+	            </div>
+	          </div>
+	        </div>
+	        <p>By <a href="http://www.clarkeology.com/blog/">Paul Clarke</a>, a work in progress.</p>
+	      </body>
       </html>
     end
   end
@@ -1038,25 +1051,25 @@ class LightWaveRF
     File.open( self.get_log_file, 'r' ).each_line do | line |
       line = JSON.parse( line )
       if line and line['timestamp']
-	new_line = []
-	d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
-	ts = Time.parse( line['timestamp'] ).strftime '%s'
-	ts = ts.to_i
-	if start_date > 0
-	  ts = ts - start_date
-	else
-	  start_date = ts
-	end
-	new_line << ts
-	new_line << line['message']['usage'].to_i / 10
-	if line['message']['annotation'] and line['message']['annotation']['title'] and line['message']['annotation']['text']
-	  new_line << line['message']['annotation']['title']
-	  new_line << line['message']['annotation']['text']
-	end
-	data << new_line
-	if ( ! daily[d] or line['message']['today'] > daily[d]['today'] )
+	      new_line = []
+	      d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
+	      ts = Time.parse( line['timestamp'] ).strftime '%s'
+	      ts = ts.to_i
+	      if start_date > 0
+	        ts = ts - start_date
+	      else
+	        start_date = ts
+	      end
+	      new_line << ts
+	      new_line << line['message']['usage'].to_i / 10
+	      if line['message']['annotation'] and line['message']['annotation']['title'] and line['message']['annotation']['text']
+	        new_line << line['message']['annotation']['title']
+	        new_line << line['message']['annotation']['text']
+	      end
+	      data << new_line
+	      if ( ! daily[d] or line['message']['today'] > daily[d]['today'] )
           daily[d] = line['message']
-	end
+	      end
       end
     end
     debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
