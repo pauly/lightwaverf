@@ -290,6 +290,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.6.1 fixed timezone issue
   * v 0.6   randomised timers
   * v 0.5   build a web page
   * v 0.4   super timers!

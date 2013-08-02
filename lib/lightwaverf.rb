@@ -538,19 +538,33 @@ class LightWaveRF
     match = /W=(\d+),(\d+),(\d+),(\d+)/.match data
     debug and ( p match )
     if match
-      data = { 'message' => { 'usage' => match[1].to_i, 'max' => match[2].to_i, 'today' => match[3].to_i }}
+      data = {
+        'message' => {
+          'usage' => match[1].to_i,
+          'max' => match[2].to_i,
+          'today' => match[3].to_i
+        }
+      }
       data['timestamp'] = Time.now.to_s
       if note
         data['message']['annotation'] = { 'title' => title.to_s, 'text' => note.to_s }
       end
       debug and ( p data )
       begin
-      	File.open( self.get_log_file, 'a' ) do | f |
+        File.open( self.get_log_file, 'a' ) do | f |
           f.write( data.to_json + "\n" )
-      	end
-      	data['message']
+        end
+        file = self.get_summary_file.gsub 'summary', 'daily'
+        json = self.class.get_contents file
+        begin
+          data['message']['history'] = JSON.parse json
+        rescue => e
+          data['message']['error'] = 'error parsing ' + file + '; ' + e.to_s
+          data['message']['history_json'] = json
+        end
+        data['message']
       rescue
-	puts 'error writing to log'
+        puts 'error writing to log'
       end
     end
   end
@@ -592,9 +606,15 @@ class LightWaveRF
     query_start = now - self.class.to_seconds( past )
     query_end = now + self.class.to_seconds( future )
 
-    url = LightWaveRF.new.get_config['calendar']
-    # url += '?ctz=' + Time.new.zone
-    url += '?ctz=UTC'
+    # url = LightWaveRF.new.get_config['calendar']
+    url = self.get_config['calendar']
+
+    url += '?ctz=' + Time.new.zone
+    # url += '?ctz=UTC'
+    if Time.new.zone != 'UTC'
+      p 'time zone is ' + Time.new.zone + ' so look out...'
+    end
+
     url += '&singleevents=true'
     url += '&start-min=' + query_start.strftime( '%FT%T%:z' ).sub('+', '%2B')
     url += '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub('+', '%2B')
@@ -981,9 +1001,9 @@ class LightWaveRF
       debug and ( puts name + ' is ' + room.to_s )
       list += '<dt><a>' + name + '</a></dt><dd><ul>'
       room['device'].each do | device |
-	      # link ideally relative to avoid cross domain issues
-	      link = '/room/' + room['name'].to_s + '/' + device.first.to_s
-      	list += '<li><a class="ajax off" href="' + link + '">' + room['name'].to_s + ' ' + device.first.to_s + '</a></li>'
+        # link ideally relative to avoid cross domain issues
+        link = '/room/' + room['name'].to_s + '/' + device.first.to_s
+        list += '<li><a class="ajax off" href="' + link + '">' + room['name'].to_s + ' ' + device.first.to_s + '</a></li>'
       end
       list += '</ul></dd>'
     end
@@ -1004,39 +1024,39 @@ class LightWaveRF
       <html>
         <head>
           <title>#{title}</title>
-	        <style type="text/css">
-	          body { font-family: arial, verdana, sans-serif; }
-	          div#energy_chart { width: 800px; height: 600px; }
-	          div#gauge_div { width: 100px; height: 100px; }
-	          dd { display: none; }
-	          .off, .on:hover { padding-right: 18px; background: url(lightning_delete.png) no-repeat top right; }
-	          .on, .off:hover { padding-right: 18px; background: url(lightning_add.png) no-repeat top right; }
-	        </style>
-	      </head>
+          <style type="text/css">
+            body { font-family: arial, verdana, sans-serif; }
+            div#energy_chart { width: 800px; height: 600px; }
+            div#gauge_div { width: 100px; height: 100px; }
+            dd { display: none; }
+            .off, .on:hover { padding-right: 18px; background: url(lightning_delete.png) no-repeat top right; }
+            .on, .off:hover { padding-right: 18px; background: url(lightning_add.png) no-repeat top right; }
+          </style>
+        </head>
         <body>
           <div class="container">
             <div class="row">
               <div class="col">
-	              <h1>#{title}</h1>
-	              <p class="intro">#{intro}</p>
+                <h1>#{title}</h1>
+                <p class="intro">#{intro}</p>
                 <div id="energy_chart">
                   Not seeing an energy chart here?
                   Maybe not working in your device yet, sorry.
                   This uses google chart api which may generate FLASH :-(
                   Try in a web browser.
                 </div>
-		            <h2>Rooms and devices</h2>
-		            <p>@todo make these links to control the devices...</p>
-	              <p class="help">#{help}</p>
-	              #{js}
-	            </div>
+                <h2>Rooms and devices</h2>
+                <p>@todo make these links to control the devices...</p>
+                <p class="help">#{help}</p>
+                #{js}
+              </div>
               <div class="col">
                 <div class="col" id="gauge_div"></div>
-	            </div>
-	          </div>
-	        </div>
-	        <p>By <a href="http://www.clarkeology.com/blog/">Paul Clarke</a>, a work in progress.</p>
-	      </body>
+              </div>
+            </div>
+          </div>
+          <p>By <a href="http://www.clarkeology.com/blog/">Paul Clarke</a>, a work in progress.</p>
+        </body>
       </html>
     end
   end
@@ -1045,35 +1065,38 @@ class LightWaveRF
   def summarise days = 7, debug = nil
     days = days.to_i
     data = [ ]
-    daily = { }
+      file = self.get_summary_file.gsub 'summary', 'daily'
+      json = self.class.get_contents file
+      daily = JSON.parse json
     start_date = 0
     d = nil
     File.open( self.get_log_file, 'r' ).each_line do | line |
-      line = JSON.parse( line )
+      line = JSON.parse line
       if line and line['timestamp']
-	      new_line = []
-	      d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
-	      ts = Time.parse( line['timestamp'] ).strftime '%s'
-	      ts = ts.to_i
-	      if start_date > 0
-	        ts = ts - start_date
-	      else
-	        start_date = ts
-	      end
-	      new_line << ts
-	      new_line << line['message']['usage'].to_i / 10
-	      if line['message']['annotation'] and line['message']['annotation']['title'] and line['message']['annotation']['text']
-	        new_line << line['message']['annotation']['title']
-	        new_line << line['message']['annotation']['text']
-	      end
-	      data << new_line
-	      if ( ! daily[d] or line['message']['today'] > daily[d]['today'] )
+        new_line = []
+        d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
+        ts = Time.parse( line['timestamp'] ).strftime '%s'
+        ts = ts.to_i
+        if start_date > 0
+          ts = ts - start_date
+        else
+          start_date = ts
+        end
+        new_line << ts
+        new_line << line['message']['usage'].to_i / 10
+        if line['message']['annotation'] and line['message']['annotation']['title'] and line['message']['annotation']['text']
+          new_line << line['message']['annotation']['title']
+          new_line << line['message']['annotation']['text']
+        end
+        data << new_line
+        if (( ! daily[d] ) or ( line['message']['today'] > daily[d]['today'] ))
           daily[d] = line['message']
-	      end
+          daily[d].delete 'usage'
+        end
       end
     end
     debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
-    data = data.last( 60 * 24 * days )
+    data = data.last 60 * 24 * days
     debug and ( puts 'now got ' + data.length.to_s + ' lines in the log ( 60 * 24 * ' + days.to_s + ' = ' + ( 60 * 24 * days ).to_s + ' )' )
     if data and data[0]
       debug and ( puts 'data[0] is ' + data[0].to_s )
@@ -1085,12 +1108,13 @@ class LightWaveRF
     File.open( summary_file, 'w' ) do |file|
       file.write data.to_s
     end
-    # @todo fix the daily stats, every night it reverts to the minimum value...
+    # @todo fix the daily stats, every night it reverts to the minimum value because the timezones are different
+    # so 1am on the wifi-link looks midnight on the server
     File.open( summary_file.gsub( 'summary', 'daily' ), 'w' ) do | file |
-      file.write daily.to_s
+      file.write daily.to_json.to_s
     end
     File.open( summary_file.gsub( 'summary', 'daily.' + d ), 'w' ) do | file |
-      file.write daily.select { |key| key == daily.keys.last }.to_s
+      file.write daily.select { |key| key == daily.keys.last }.to_json.to_s
     end
   end
 
