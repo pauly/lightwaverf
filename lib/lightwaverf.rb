@@ -645,20 +645,20 @@ class LightWaveRF
 
       # refresh the list of entries for the caching period
       doc.elements.each 'feed/entry' do | e |
-        debug and ( p "-------------------")
-        debug and ( p "Processing entry...")
+        debug and ( p '-------------------' )
+        debug and ( p 'Processing entry...' )
         event = Hash.new
 
         # tokenise the title
-        debug and ( p "Event title is: " + e.elements['title'].text )
+        debug and ( p 'Event title is: ' + e.elements['title'].text )
         command = e.elements['title'].text.split
         command_length = command.length
-        debug and ( p "Number of words is: " + command_length.to_s )
+        debug and ( p 'Number of words is: ' + command_length.to_s )
         if command and command.length >= 1
           first_word = command[0].to_s
           # determine the type of the entry
           if first_word[0,1] == '#'
-            debug and ( p "Type is: state" )
+            debug and ( p 'Type is: state' )
             event['type'] = 'state' # temporary type, will be overridden later
             event['room'] = nil
             event['device'] = nil
@@ -667,21 +667,21 @@ class LightWaveRF
           else
             case first_word
             when 'mood'
-              debug and ( p "Type is: mood" )
+              debug and ( p 'Type is: mood' )
               event['type'] = 'mood'
               event['room'] = command[1].to_s
               event['device'] = nil
               event['state'] = command[2].to_s
               modifier_start = 3
             when 'sequence'
-              debug and ( p "Type is: sequence" )
+              debug and ( p 'Type is: sequence' )
               event['type'] = 'sequence'
               event['room'] = nil
               event['device'] = nil
               event['state'] = command[1].to_s
               modifier_start = 2
             else
-              debug and ( p "Type is: device" )
+              debug and ( p 'Type is: device' )
               event['type'] = 'device'
               event['room'] = command[0].to_s
               event['device'] = command[1].to_s
@@ -689,18 +689,19 @@ class LightWaveRF
               if command_length > 2
                 third_word = command[2].to_s
                 first_char = third_word[0,1]
-                debug and ( p "First char is: " + first_char )
+                debug and ( p 'First char is: ' + first_char )
                 # if the third word does not start with a modifier flag, assume it's a state
-                if first_char != '@' and first_char != '!' and first_char != '+' and first_char != '-'
-                  debug and ( p "State has been given.")
+                # if first_char != '@' and first_char != '!' and first_char != '+' and first_char != '-'
+                if /\w/.match first_char
+                  debug and ( p 'State has been given.')
                   event['state'] = command[2].to_s
                   modifier_start = 3
                 else
-                  debug and ( p "State has not been given." )
+                  debug and ( p 'State has not been given.' )
                   modifier_start = 2
                 end
               else
-                debug and ( p "State has not been given." )
+                debug and ( p 'State has not been given.' )
                 event['state'] = nil
                 modifier_start = 2
               end
@@ -710,24 +711,24 @@ class LightWaveRF
           # get modifiers if they exist
           time_modifier = 0
           if command_length > modifier_start
-            debug and ( p "May have modifiers..." )
+            debug and ( p 'May have modifiers...' )
             when_modifiers = [ ]
             unless_modifiers = [ ]
             modifier_count = command_length - modifier_start
-            debug and ( p "Count of modifiers is " + modifier_count.to_s )
+            debug and ( p 'Count of modifiers is ' + modifier_count.to_s )
             for i in modifier_start..(command_length-1)
               modifier = command[i]
               if modifier[0,1] == '@'
-                debug and ( p "Found when modifier: " + modifier[1..-1] )
+                debug and ( p 'Found when modifier: ' + modifier[1..-1] )
                 when_modifiers.push modifier[1..-1]
               elsif modifier[0,1] == '!'
-                debug and ( p "Found unless modifier: " + modifier[1..-1] )
+                debug and ( p 'Found unless modifier: ' + modifier[1..-1] )
                 unless_modifiers.push modifier[1..-1]
               elsif modifier[0,1] == '+'
-                debug and ( p "Found positive time modifier: " + modifier[1..-1] )
+                debug and ( p 'Found positive time modifier: ' + modifier[1..-1] )
                 time_modifier = modifier[1..-1].to_i
               elsif modifier[0,1] == '-'
-                debug and ( p "Found negative time modifier: " + modifier[1..-1] )
+                debug and ( p 'Found negative time modifier: ' + modifier[1..-1] )
                 time_modifier = modifier[1..-1].to_i * -1
               end
             end
@@ -738,7 +739,7 @@ class LightWaveRF
 
           # parse the date string
           event_time = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)&nbsp;\n(.*)<br>(.*)/.match e.elements['summary'].text
-          debug and ( p "Event times are: " + event_time.to_s )
+          debug and ( p 'Event times are: ' + event_time.to_s )
           start_date = event_time[1].to_s
           start_time = event_time[2].to_s
           end_date = event_time[3].to_s
@@ -748,7 +749,8 @@ class LightWaveRF
             end_date = start_date
           end
 
-          time_modifier += self.class.variance e.elements['title'].text
+          time_modifier += self.class.variance( e.elements['title'].text ).to_i
+          event['annotate'] = ! ( /do not annotate/.match e.elements['title'].text )
 
           debug and ( p 'Start date: ' + start_date )
           debug and ( p 'Start time: ' + start_time )
@@ -841,8 +843,8 @@ class LightWaveRF
       debug and ( p 'randomness is ' + n.to_s )
       return rand( n ) - ( n / 2 )
     end
-    debug and ( p 'no randomness return 0' )
-    return 0
+    debug and ( p 'no randomness return nil' )
+    return nil
   end
 
   # Convert a string to seconds, assume it is in minutes
@@ -904,7 +906,7 @@ class LightWaveRF
 
         # if has modifiers, check modifiers against states
         unless event['when_modifiers'].nil?
-          debug and ( p 'Event has when modifiers. Checking they are all met...')
+          debug and ( p 'Event has when modifiers. Checking they are all met...' )
 
           # determine which states apply at the time of the event
           applicable_states = [ ]
@@ -913,12 +915,12 @@ class LightWaveRF
               applicable_states.push state['name']
             end
           end
-          debug and ( p 'Applicable states are: ' + applicable_states.to_s)
+          debug and ( p 'Applicable states are: ' + applicable_states.to_s )
 
           # check that each when modifier exists in appliable states
           event['when_modifiers'].each do | modifier |
             unless applicable_states.include? modifier
-              debug and ( p 'Event when modifier not met: ' + modifier)
+              debug and ( p 'Event when modifier not met: ' + modifier )
               run_now = false
               break
             end
@@ -927,7 +929,7 @@ class LightWaveRF
           # check that each unless modifier does not exist in appliable states
           event['unless_modifiers'].each do | modifier |
             if applicable_states.include? modifier
-              debug and ( p 'Event unless modifier not met: ' + modifier)
+              debug and ( p 'Event unless modifier not met: ' + modifier )
               run_now = false
               break
             end
@@ -947,32 +949,32 @@ class LightWaveRF
 
     triggered = [ ]
 
+    annotate = false
     run_list.each do | event |
       # execute based on type
       case event['type']
       when 'mood'
         p 'Executing mood. Room: ' + event['room'] + ', Mood: ' + event['state']
         result = self.mood event['room'], event['state'], debug
-        sleep 1
-        triggered << [ event['room'], event['device'], event['state'] ]
       when 'sequence'
         p 'Executing sequence. Sequence: ' + event['state']
         result = self.sequence event['state'], debug
-        sleep 1
-        triggered << [ event['room'], event['device'], event['state'] ]
       else
         p 'Executing device. Room: ' + event['room'] + ', Device: ' + event['device'] + ', State: ' + event['state']
         result = self.send event['room'], event['device'], event['state'], debug
-        sleep 1
-        triggered << [ event['room'], event['device'], event['state'] ]
       end
-        self.log_timer_event event['type'], event['room'], event['device'], event['state'], result
+      sleep 1
+      triggered << [ event['room'], event['device'], event['state'] ]
+      if event['annotate']
+        annotate = true
+      end
+      self.log_timer_event event['type'], event['room'], event['device'], event['state'], result
     end
 
     # update energy log
     title = nil
     text = nil
-    if triggered.length > 0
+    if annotate
       debug and ( p triggered.length.to_s + ' events so annotating energy log too...' )
       title = 'timer'
       text = triggered.map { | e | e.join ' ' }.join ', '

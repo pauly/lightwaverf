@@ -80,5 +80,20 @@ class LightWaveRFTest < Test::Unit::TestCase
     assert_equal 60, LightWaveRF.to_seconds( '60s' )
   end
 
+  def test_variance
+    v = LightWaveRF.variance 'this on randomise'
+    assert_equal nil, v
+    v = LightWaveRF.variance 'this off randon 6'
+    assert_equal nil, v
+    v = LightWaveRF.variance 'this on random 10'
+    assert v != nil
+    assert v >= -5
+    assert v <= 5
+    v = LightWaveRF.variance 'this on randomise 10 more stuff'
+    assert v != nil
+    assert v >= -5
+    assert v <= 5
+  end
+
 end
 
