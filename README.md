@@ -89,10 +89,14 @@ You can set the state of any device with commands such as the following:
     lightwaverf lounge light on
     lightwaverf kitchen spotlights off
     lightwaverf kitchen spotlights 40 (where 40 is 40% - any number between 0 and 100 is valid)
-    lightwaverf lounge light full (alternative for 100%)
-    lightwaverf lounge light high (alternative for 75%)
-    lightwaverf kitchen spotlights mid (alternative for 50%)
-    lightwaverf lounge light low (alternative for 25%)
+    lightwaverf lounge light dim (alternative for 25%)
+    
+The following words can be used for quickly setting common levels:
+
+  * 25%: low, dim
+  * 50%: mid, half
+  * 75%: high, bright
+  * 100% full, max, maximum
     
 You can also set the state for all devices in a room (based on you configuration file):
 
@@ -132,7 +136,7 @@ You can also execute the special 'alloff' mood to turn off all devices in that r
     
     lightwaverf mood living alloff
     
-Finally, you can also set any state for all the devices in the room by prefixing any supported state with 'all':
+You can also set any state for all the devices in the room by prefixing any supported state with 'all':
     
     lightwaverf mood living allon
     lightwaverf mood living allfull
@@ -140,6 +144,15 @@ Finally, you can also set any state for all the devices in the room by prefixing
     lightwaverf mood living all50
     
 Note that this sets the state on each device configured in that room by looping through the configuration. There will be a short pause between each device being set to ensure that all the commands are successful.
+
+Finally, you can also set the state for all rooms in one go (useful for switching off everything in the house) using the keyword 'all' as the room name:
+
+    lightwaverf mood all alloff
+    lightwaverf mood all allfull
+    
+Again, everything except 'alloff' will be looping through your configuration and so may take some time to complete.
+
+Also, please see the section on exclusions below if you want to exclude certain devices from these 'all' commands.
     
 To (re)learn a mood with the current device settings:
 
@@ -177,6 +190,80 @@ Note that pauses can be added (in seconds)
       - - mood
         - living
         - alloff
+
+Sequences can execute a number of tasks in order, either simple device commands or setting moods, as per the following example:
+
+Note that pauses can be added (in seconds)
+
+    sequence:
+      testing:
+      - - mood
+        - living
+        - movie
+      - - pause
+        - 60
+      - - mood
+        - living
+        - alloff
+
+## Aliases
+
+Aliases can be defined for your rooms, devices and moods so that you can use different words to refer to the same entity. For example, you could name a room 'lounge' and setup aliases as 'living' (room) and 'family' (room). You can do the same for devices and moods, as per the following example:
+
+    room: 
+    - name: lounge
+      device:
+      - main
+      - floor
+      mood:
+      - movie
+      - dinner
+      aliases:
+        room:
+        - living
+        - family
+        device:
+          main:
+          - light
+          - central
+          floor:
+          - lamp
+        mood:
+          movie:
+          - tv
+          - television
+          
+Aliases are particularly useful when using the SiriProxy wrapper (https://github.com/ianperrin/siriproxy-lwrf) to control your devices by voice. The aliases allow you to refer to your rooms, devices and moods using multiple names, so you don't have to recall the exact word and can use more natural language.
+
+## Exclude function
+
+In some cases, you might want to exclude certain rooms or devices from being controlled when you execute 'all' commands. This could be for a number of purposes, including:
+
+  * you have some devices plugged into a LWRF socket that generally need to remain on (but you occasionally want to power-cycle remotely), such as a broadband router
+  * you have setup single devices in multiple rooms (to get 'zone' style control) and you want to exclude the 'copies' from commands involving all rooms
+
+In order to exclude entire rooms or devices, you can specify exclusions in your config file for certain rooms as follows:
+
+    room: 
+    - name: lounge
+      device:
+      - main
+      - floor
+      exclude:
+        room: true
+
+This would exclude the room from commands directed at all rooms.
+
+    room: 
+    - name: lounge
+      device:
+      - main
+      - floor
+      exclude:
+        device:
+          floor: true
+
+This would exclude the device called 'floor' from commands directed at all devices in this room and any commands directed at all rooms that involve looping through the device list. Note that this exclusion will not apply to the special 'alloff' command which will always control all devices in the room, due to the way it works.
 
 # Automated timers (via Google Calendar)
 
