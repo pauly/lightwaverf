@@ -110,15 +110,12 @@ Also note that configured exclusions (see below) will apply when controlling mul
 
 Using the special state 'fulloff' will switch off everything, ignoring exclusions (using the special 'alloff' mood:
 
-<<<<<<< HEAD
     lightwaverf lounge all fulloff (set all configured devices to off, ignoring exclusions)
     
 You can also set the state for devices in all rooms (based on you configuration file):
 
     lightwaverf all all fulloff (switch off all devices in all rooms, ignoring exclusions)
     
-=======
->>>>>>> upstream/master
 Tip: I have found that you can actually pair a single device to 2 different device 'slots' in the same room. So, for example a light could be in slot 1 (D1) and also slot 4 (D4). This allows you to be a bit clever and pair each device to both its own slot and to a 'common' slot, such as this:
 
     Main light D1 & D4
@@ -143,13 +140,10 @@ To set a mood:
 
     lightwaverf mood living movie
     
-<<<<<<< HEAD
 You can also execute the special 'fulloff' mood to turn off all devices in that room:
     
     lightwaverf mood living fulloff
         
-=======
->>>>>>> upstream/master
 To (re)learn a mood with the current device settings:
 
     lightwaverf mood living movie
@@ -168,29 +162,9 @@ And moods are supported in google calendar timers by creating an event with the 
 
     mood living movie
 
-<<<<<<< HEAD
 Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time.
-=======
-Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time
->>>>>>> upstream/master
 
 ## Sequence support
-
-Sequences can execute a number of tasks in order, either simple device commands or setting moods, as per the following example:
-
-Note that pauses can be added (in seconds)
-
-    sequence:
-      testing:
-      - - mood
-        - living
-        - movie
-      - - pause
-        - 60
-<<<<<<< HEAD
-      - - mood
-        - living
-        - fulloff
 
 Sequences can execute a number of tasks in order, either simple device commands or setting moods, as per the following example:
 
@@ -253,7 +227,7 @@ In order to exclude entire rooms or devices, you can specify exclusions in your 
       exclude:
         room: true
 
-This would exclude the room from commands directed at all rooms.
+This would exclude the room called 'lounge' from commands directed at all rooms.
 
     room: 
     - name: lounge
@@ -265,11 +239,6 @@ This would exclude the room from commands directed at all rooms.
           floor: true
 
 This would exclude the device called 'floor' from commands directed at all devices in this room and any commands directed at all rooms that involve looping through the device list. Note that this exclusion will not apply to the special 'fulloff' command which will always control all devices in the room, due to the way it works.
-=======
-      - - living
-        - all
-        - off
->>>>>>> upstream/master
 
 # Automated timers (via Google Calendar)
 
@@ -331,11 +300,6 @@ Once setup, you can create various entries to control as follows:
 You can also set moods using the calendar by creating an event with the following syntax:
 
     mood living movie - set movie mode in the lounge
-<<<<<<< HEAD
-=======
-    living all off - turn everything off in the lounge
-    living all on - turn everything on in the lounge
->>>>>>> upstream/master
     
 And you can execute sequences using the calendar by creating an eventas follows:
 
@@ -394,11 +358,7 @@ Here are some ideas on things to automate with the timers:
 * Shut everything off at midnight unless there's a party going on (Should be obvious how to do this now!)
 * Time your plugin air freshners to switch on/off throughout the day
 
-<<<<<<< HEAD
 ## Timer Known issues/future improvements
-=======
-## Timer known issues/future improvements
->>>>>>> upstream/master
 
 * Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
 * Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
