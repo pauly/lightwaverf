@@ -42,9 +42,12 @@ class LightWaveRF
 
   # Display help
   def help
+    config = self.get_config
     help = self.usage + "\n"
     help += "your rooms, devices, and sequences, as defined in " + self.get_config_file + ":\n\n"
-    help += YAML.dump self.get_config['room']
+    help += YAML.dump config
+    help += "interpreted room configuration:\n\n"
+    help += YAML.dump self.class.get_rooms config
     room = self.get_config['room'].last['name']
     device = self.get_config['room'].last['device'].last
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
@@ -278,7 +281,7 @@ class LightWaveRF
     # http://rubular.com/r/UH0H4b4afF
     body.scan( /var (gDeviceNames|gDeviceStatus|gRoomNames|gRoomStatus)\s*=\s*([^;]*)/ ).each do | variable |
       if variable[0]
-        variables[variable[0]] = variable[1].scan /"([^"]*)\"/
+        # variables[variable[0]] = variable[1].scan /"([^"]*)\/
       end
     end
     debug and ( p '[Info - LightWaveRF Gem] so variables are ' + variables.inspect )
@@ -291,26 +294,70 @@ class LightWaveRF
     r = 1
     config['room'].each do | room |
       debug and ( puts room['name'] + ' = R' + r.to_s )
-      rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'mood' => { }, 'learnmood' => { }}
+      # Create skeleton config
+      rooms[room['name']] = {
+          'id' => 'R' + r.to_s,
+          'name' => room['name'],
+          'device' => { },
+          'mood' => { },
+          'learnmood' => { },
+          'exclude_room' => (room.has_key?('exclude') and room['exclude'].has_key?('room')) ? room['exclude']['room'] : false,
+          'exclude_device' => { }
+      }
+      # Add device exclusions
+      if room.has_key?('exclude') and room['exclude'].has_key?('device')
+        room['exclude']['device'].each do | device |
+          rooms[room['name']]['exclude_device'][device] = true
+        end
+      end
+      # Add any devices
       d = 1
       unless room['device'].nil?
         room['device'].each do | device |
           # @todo possibly need to complicate this to get a device name back in here
           debug and ( puts ' - ' + device + ' = D' + d.to_s )
           rooms[room['name']]['device'][device] = 'D' + d.to_s
+          #Add any device aliases as copies with the same device code
+          if room.has_key?('aliases') and room['aliases'].has_key?('device') and room['aliases']['device'].has_key?(device)
+            room['aliases']['device'][device].each do | aliasname |
+              rooms[room['name']]['device'][aliasname] = 'D' + d.to_s
+              # Always exlcude alias devices
+              rooms[room['name']]['exclude_device'][aliasname] = true
+            end
+          end
           d += 1
         end
       end
+      # Add any moods
       m = 1
       unless room['mood'].nil?
         room['mood'].each do | mood |
-          rooms[room['name']]['mood'][mood] = 'FmP' + m.to_s
-          rooms[room['name']]['learnmood'][mood] = 'FsP' + m.to_s
-          m += 1
-        end
+	  rooms[room['name']]['mood'][mood] = 'FmP' + m.to_s
+	  rooms[room['name']]['learnmood'][mood] = 'FsP' + m.to_s
+          #Add any mood aliases as copies with the same mood code
+          if room.has_key?('aliases') and room['aliases'].has_key?('mood') and room['aliases']['mood'].has_key?(mood)
+            room['aliases']['mood'][mood].each do | aliasname |
+              rooms[room['name']]['mood'][aliasname] = 'FmP' + m.to_s
+              rooms[room['name']]['learnmood'][aliasname] = 'FsP' + m.to_s
+            end
+          end
+	  m += 1
+	end
       end
       r += 1
+      # Duplicate room for any aliases
+      if room.has_key?('aliases') and room['aliases'].has_key?('room')
+        room['aliases']['room'].each do | aliasname |
+          rooms[aliasname] = rooms[room['name']].dup
+          # Change the name and always exclude from all room commans to avoid double processing
+          rooms[aliasname]['name'] = aliasname
+          rooms[aliasname]['exclude_room'] = true
+          d += 1
+        end
+      end
     end
+    debug and ( "Processed config file from get_rooms is:")    
+    debug and ( puts YAML.dump rooms)    
     rooms
   end
 
@@ -333,14 +380,15 @@ class LightWaveRF
         state = 'F0'
       when 'on'
         state = 'F1'
-      when 'low'
+      # preset dim levels
+      when 'low', 'dim'
         state = 'FdP8'
-      when 'mid'
+      when 'mid', 'half'
         state = 'FdP16'
-      when 'high'
+      when 'high', 'bright'
         state = 'FdP24'
-      when 'full'
-        state = 'FdP32'
+      when 'full', 'max', 'maximum'
+        state = 'FdP32'        
       when 1..100
         state = 'FdP' + ( state * 0.32 ).round.to_s
       else
@@ -384,12 +432,15 @@ class LightWaveRF
     debug and ( puts '[Info - LightWaveRF] timezone: response is ' + data )
     return (data == "666,OK\r\n")
   end
-
-  # Turn one of your devices on or off or all devices in a room off
+  
+  # Turn one of your devices on or off or to a particular state
+  # Perform action on all devices in a room
+  # Perform action on device(s) in all rooms
   #
   # Example:
   #   >> LightWaveRF.new.send 'our', 'light', 'on'
-  #   >> LightWaveRF.new.send 'our', '', 'off'
+  #   >> LightWaveRF.new.send 'our', 'all', 'off'
+  #   >> LightWaveRF.new.send 'all', 'all', '25'
   #
   # This method was too confusing, got rid of "alloff"
   # it can be done with "[room] all off" anyway
@@ -407,28 +458,57 @@ class LightWaveRF
       debug and ( p 'Missing room (' + room.to_s + ') or state (' + state.to_s + ')' );
       STDERR.puts self.usage( room );
     else
-      # support for setting state for all devices in the room (recursive)
-      if device == 'all'
-        debug and ( p 'Processing all devices...' )
-        rooms[room]['device'].each do | device_name, code |
-          debug and ( p "Device is: " + device_name )
-          self.send room, device_name, state, debug
-          sleep 1
+      # support for controlling all rooms (recursive)
+      if room == 'all'
+        debug and ( p "Processing all rooms..." )
+        rooms.each do | config, each_room |
+          room = each_room['name']
+          unless each_room.has_key?('exclude_room') and each_room['exclude_room']
+            p "Room is: " + room
+            success = self.send room, device, state, debug
+            sleep 1
+          else
+            p "Skipping excluded room: " + room
+          end
         end
         success = true
-      # process single device
-      elsif device and rooms[room]['device'][device]
-        state = self.class.get_state state
-        command = self.command rooms[room], device, state
-        debug and ( p 'command is ' + command )
-        data = self.raw command
-        debug and ( p 'response is ' + data )
-        success = true
+      # process single room
       else
-        STDERR.puts self.usage( room );
+        debug and ( p "Processing single room..." )
+        # support for setting state for all devices in the room (recursive)
+        if device == 'all'
+          # support for using mood alloff command
+          if state == 'fulloff'
+            debug and ( p 'Setting all devices off using mood control...' )
+            success = self.mood room, 'alloff'
+          else
+            debug and ( p 'Processing all devices...' )        
+            rooms[room]['device'].each do | device_name, code |
+              # Check for exclusions
+              unless rooms[room]['exclude_device'].has_key?(device_name) and rooms[room]['exclude_device'][device_name]
+                debug and ( p "Device is: " + device_name )
+                self.send room, device_name, state, debug
+                sleep 1
+              else
+                debug and ( p "Skipping excluded device: " + device_name )
+              end
+            end
+            success = true
+          end
+        # process single device
+        elsif device and rooms[room]['device'][device]
+          state = self.class.get_state state
+          command = self.command rooms[room], device, state
+          debug and ( p 'command is ' + command )
+          data = self.raw command
+          debug and ( p 'response is ' + data )
+          success = true
+        else
+          STDERR.puts self.usage
+        end
       end
-    end
     success
+    end
   end
 
   # A sequence of events
@@ -472,35 +552,42 @@ class LightWaveRF
     success = false
     debug and (p 'Executing mood: ' + mood + ' in room: ' + room)
     #debug and ( puts 'config is ' + self.get_config.to_s )
-    rooms = self.class.get_rooms self.get_config
+    rooms = self.class.get_rooms self.get_config, debug
     # support for setting a mood in all rooms (recursive)
     if room == 'all'
       debug and ( p "Processing all rooms..." )
       rooms.each do | config, each_room |
         room = each_room['name']
-        debug and ( p "Room is: " + room )
-        success = self.mood room, mood, debug
-        sleep 1
+        unless each_room.has_key?('exclude_room') and each_room['exclude_room']
+          debug and ( p "Room is: " + room )
+          success = self.mood room, mood, debug
+          sleep 1
+        else
+          p "Skipping excluded room: " + room
+        end
       end
       success = true
     # process single mood
     else
+      debug and ( p "Processing single room..." )
       if rooms[room] and mood
-        if rooms[room]['mood'][mood]
+        if mood == 'alloff'
+          command = self.command rooms[room], nil, 'Fa'
+          debug and ( p 'command is ' + command )
+          self.raw command
+          success = true          
+        elsif rooms[room]['mood'][mood]
           command = self.command rooms[room], nil, rooms[room]['mood'][mood]
           debug and ( p 'command is ' + command )
           self.raw command
           success = true
-        # support for special "moods" via device looping
+        # deprecated support for other 'allxxx' comands
         elsif mood[0,3] == 'all'
-          state = mood[3..-1]
-          debug and (p 'Selected state is: ' + state)
-          rooms[room]['device'].each do | device |
-            p 'Processing device: ' + device[0]
-            self.send room, device[0], state, debug
-            sleep 1
-          end
-          success = true
+          p 'Support for "mood <room> all<state>" command is deprecated.'
+          p 'Please use "<room> all <state>" instead.'
+          success = false
+        else
+          STDERR.puts self.usage
         end
       else
         STDERR.puts self.usage( room );
@@ -520,7 +607,7 @@ class LightWaveRF
   def learnmood room = nil, mood = nil, debug = false
     debug and (p 'Learning mood: ' + mood)
     #debug and ( puts 'config is ' + self.get_config.to_s )
-    rooms = self.class.get_rooms self.get_config
+    rooms = self.class.get_rooms self.get_config, debug
     if rooms[room] and mood and rooms[room]['learnmood'][mood]
       command = self.command rooms[room], nil, rooms[room]['learnmood'][mood]
       debug and ( p 'command is ' + command )

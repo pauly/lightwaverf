@@ -91,17 +91,31 @@ You can set the state of any device with commands such as the following:
     lightwaverf lounge light on
     lightwaverf kitchen spotlights off
     lightwaverf kitchen spotlights 40 (where 40 is 40% - any number between 0 and 100 is valid)
-    lightwaverf lounge light full (alternative for 100%)
-    lightwaverf lounge light high (alternative for 75%)
-    lightwaverf kitchen spotlights mid (alternative for 50%)
-    lightwaverf lounge light low (alternative for 25%)
+    lightwaverf lounge light dim (alternative for 25%)
+    
+The following words can be used for quickly setting common levels:
+
+  * 25%: low, dim
+  * 50%: mid, half
+  * 75%: high, bright
+  * 100% full, max, maximum
     
 You can also set the state for all devices in a room (based on you configuration file):
 
     lightwaverf lounge all full (set all configured devices to full)
+    lightwaverf kitchen all off (set all configured devices to off)
     
 Note that this sets the state on each device configured in that room by looping through the configuration. There will be a short pause between each device being set to ensure that all the commands are successful.
+Also note that configured exclusions (see below) will apply when controlling multiple devies
 
+Using the special state 'fulloff' will switch off everything, ignoring exclusions (using the special 'alloff' mood:
+
+    lightwaverf lounge all fulloff (set all configured devices to off, ignoring exclusions)
+    
+You can also set the state for devices in all rooms (based on you configuration file):
+
+    lightwaverf all all fulloff (switch off all devices in all rooms, ignoring exclusions)
+    
 Tip: I have found that you can actually pair a single device to 2 different device 'slots' in the same room. So, for example a light could be in slot 1 (D1) and also slot 4 (D4). This allows you to be a bit clever and pair each device to both its own slot and to a 'common' slot, such as this:
 
     Main light D1 & D4
@@ -126,6 +140,10 @@ To set a mood:
 
     lightwaverf mood living movie
     
+You can also execute the special 'fulloff' mood to turn off all devices in that room:
+    
+    lightwaverf mood living fulloff
+        
 To (re)learn a mood with the current device settings:
 
     lightwaverf mood living movie
@@ -144,7 +162,7 @@ And moods are supported in google calendar timers by creating an event with the 
 
     mood living movie
 
-Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time
+Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time.
 
 ## Sequence support
 
@@ -159,9 +177,68 @@ Note that pauses can be added (in seconds)
         - movie
       - - pause
         - 60
-      - - living
-        - all
-        - off
+      - - mood
+        - living
+        - fulloff
+
+## Aliases
+
+Aliases can be defined for your rooms, devices and moods so that you can use different words to refer to the same entity. For example, you could name a room 'lounge' and setup aliases as 'living' (room) and 'family' (room). You can do the same for devices and moods, as per the following example:
+
+    room: 
+    - name: lounge
+      device:
+      - main
+      - floor
+      mood:
+      - movie
+      - dinner
+      aliases:
+        room:
+        - living
+        - family
+        device:
+          main:
+          - light
+          - central
+          floor:
+          - lamp
+        mood:
+          movie:
+          - tv
+          - television
+          
+Aliases are particularly useful when using the SiriProxy wrapper (https://github.com/ianperrin/siriproxy-lwrf) to control your devices by voice. The aliases allow you to refer to your rooms, devices and moods using multiple names, so you don't have to recall the exact word and can use more natural language.
+
+## Exclude function
+
+In some cases, you might want to exclude certain rooms or devices from being controlled when you execute 'all' commands. This could be for a number of purposes, including:
+
+  * you have some devices plugged into a LWRF socket that generally need to remain on (but you occasionally want to power-cycle remotely), such as a broadband router
+  * you have setup single devices in multiple rooms (to get 'zone' style control) and you want to exclude the 'copies' from commands involving all rooms
+
+In order to exclude entire rooms or devices, you can specify exclusions in your config file for certain rooms as follows:
+
+    room: 
+    - name: lounge
+      device:
+      - main
+      - floor
+      exclude:
+        room: true
+
+This would exclude the room called 'lounge' from commands directed at all rooms.
+
+    room: 
+    - name: lounge
+      device:
+      - main
+      - floor
+      exclude:
+        device:
+          floor: true
+
+This would exclude the device called 'floor' from commands directed at all devices in this room and any commands directed at all rooms that involve looping through the device list. Note that this exclusion will not apply to the special 'fulloff' command which will always control all devices in the room, due to the way it works.
 
 # Automated timers (via Google Calendar)
 
@@ -216,14 +293,13 @@ Once setup, you can create various entries to control as follows:
 
     lounge light - this will set the lounge light on (previous dim level) at the start time of the event and turn it off again at the end of the event
     lounge light full - this will set the lounge light to full (100%) at the start time of the event and turn it off again at the end of the event
+    lounge all 50 - this will set all the lights in the lounge light to 50% at the start time of the event and turn them off again at the end of the event    
     lounge light on - this will set the lounge light on at the start time of the event and WILL NOT turn it off again at the end of the event
     lounge light off - this will set the lounge light off at the start time of the event and WILL NOT turn it off again at the end of the event    
     
 You can also set moods using the calendar by creating an event with the following syntax:
 
     mood living movie - set movie mode in the lounge
-    living all off - turn everything off in the lounge
-    living all on - turn everything on in the lounge
     
 And you can execute sequences using the calendar by creating an eventas follows:
 
@@ -282,7 +358,7 @@ Here are some ideas on things to automate with the timers:
 * Shut everything off at midnight unless there's a party going on (Should be obvious how to do this now!)
 * Time your plugin air freshners to switch on/off throughout the day
 
-## Timer known issues/future improvements
+## Timer Known issues/future improvements
 
 * Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
 * Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
