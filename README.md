@@ -101,12 +101,18 @@ The following words can be used for quickly setting common levels:
 You can also set the state for all devices in a room (based on you configuration file):
 
     lightwaverf lounge all full (set all configured devices to full)
+    lightwaverf kitchen all off (set all configured devices to off)
     
 Note that this sets the state on each device configured in that room by looping through the configuration. There will be a short pause between each device being set to ensure that all the commands are successful.
+Also note that configured exclusions (see below) will apply when controlling multiple devies
 
-If you declare the state as 'alloff', the device name is ignored and all devices in that room are switched to off
+Using the special state 'fulloff' will switch off everything, ignoring exclusions (using the special 'alloff' mood:
 
-    lightwaverf lounge light alloff
+    lightwaverf lounge all fulloff (set all configured devices to off, ignoring exclusions)
+    
+You can also set the state for devices in all rooms (based on you configuration file):
+
+    lightwaverf all all fulloff (switch off all devices in all rooms, ignoring exclusions)
     
 Tip: I have found that you can actually pair a single device to 2 different device 'slots' in the same room. So, for example a light could be in slot 1 (D1) and also slot 4 (D4). This allows you to be a bit clever and pair each device to both its own slot and to a 'common' slot, such as this:
 
@@ -132,28 +138,10 @@ To set a mood:
 
     lightwaverf mood living movie
     
-You can also execute the special 'alloff' mood to turn off all devices in that room:
+You can also execute the special 'fulloff' mood to turn off all devices in that room:
     
-    lightwaverf mood living alloff
-    
-You can also set any state for all the devices in the room by prefixing any supported state with 'all':
-    
-    lightwaverf mood living allon
-    lightwaverf mood living allfull
-    lightwaverf mood living alllow
-    lightwaverf mood living all50
-    
-Note that this sets the state on each device configured in that room by looping through the configuration. There will be a short pause between each device being set to ensure that all the commands are successful.
-
-Finally, you can also set the state for all rooms in one go (useful for switching off everything in the house) using the keyword 'all' as the room name:
-
-    lightwaverf mood all alloff
-    lightwaverf mood all allfull
-    
-Again, everything except 'alloff' will be looping through your configuration and so may take some time to complete.
-
-Also, please see the section on exclusions below if you want to exclude certain devices from these 'all' commands.
-    
+    lightwaverf mood living fulloff
+        
 To (re)learn a mood with the current device settings:
 
     lightwaverf mood living movie
@@ -172,7 +160,7 @@ And moods are supported in google calendar timers by creating an event with the 
 
     mood living movie
 
-Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time (e.g. with the special 'alloff' mood)
+Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time.
 
 ## Sequence support
 
@@ -189,7 +177,7 @@ Note that pauses can be added (in seconds)
         - 60
       - - mood
         - living
-        - alloff
+        - fulloff
 
 Sequences can execute a number of tasks in order, either simple device commands or setting moods, as per the following example:
 
@@ -204,7 +192,7 @@ Note that pauses can be added (in seconds)
         - 60
       - - mood
         - living
-        - alloff
+        - fulloff
 
 ## Aliases
 
@@ -263,7 +251,7 @@ This would exclude the room from commands directed at all rooms.
         device:
           floor: true
 
-This would exclude the device called 'floor' from commands directed at all devices in this room and any commands directed at all rooms that involve looping through the device list. Note that this exclusion will not apply to the special 'alloff' command which will always control all devices in the room, due to the way it works.
+This would exclude the device called 'floor' from commands directed at all devices in this room and any commands directed at all rooms that involve looping through the device list. Note that this exclusion will not apply to the special 'fulloff' command which will always control all devices in the room, due to the way it works.
 
 # Automated timers (via Google Calendar)
 
@@ -318,15 +306,13 @@ Once setup, you can create various entries to control as follows:
 
     lounge light - this will set the lounge light on (previous dim level) at the start time of the event and turn it off again at the end of the event
     lounge light full - this will set the lounge light to full (100%) at the start time of the event and turn it off again at the end of the event
+    lounge all 50 - this will set all the lights in the lounge light to 50% at the start time of the event and turn them off again at the end of the event    
     lounge light on - this will set the lounge light on at the start time of the event and WILL NOT turn it off again at the end of the event
     lounge light off - this will set the lounge light off at the start time of the event and WILL NOT turn it off again at the end of the event    
     
 You can also set moods using the calendar by creating an event with the following syntax:
 
     mood living movie - set movie mode in the lounge
-    mood living alloff - turn everything off in the lounge
-    mood living allon - turn everything on in the lounge
-    mood all alloff - turn everything off in all rooms
     
 And you can execute sequences using the calendar by creating an eventas follows:
 
@@ -381,7 +367,7 @@ Here are some ideas on things to automate with the timers:
 * Shut everything off at midnight unless there's a party going on (Should be obvious how to do this now!)
 * Time your plugin air freshners to switch on/off throughout the day
 
-## Timer kKnown issues/future improvements
+## Timer Known issues/future improvements
 
 * Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
 * Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
