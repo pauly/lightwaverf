@@ -1,6 +1,4 @@
-# lightwaverf
-
-# Overview
+# Lightwaverf - Overview
 
 LightWaveRF wifi link communication for command line home automation. A ruby gem for lightwaverf home automation. Interact with lightwaverf wifi link from code or the command line. Control your lights, heating, sockets etc. Also set up timers using a google calendar and log energy usage.
 
@@ -16,13 +14,15 @@ Then this code is available as a gem, so:
 
 No need to do anything with this repo unless you are particularly interested.
 
-This code unofficial an unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf
+[![Gem Version](https://badge.fury.io/rb/lightwaverf.png)](http://badge.fury.io/rb/lightwaverf)
+
+This code is unofficial and unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf / @pauly
 
 ## Setup config
 
 You need a yml config file in your home directory, to build one, if you have already uploaded your data to the LightwaveRF server, download this data by typing
 
-    lightwaverf update 'email@example.com' '1234'
+    lightwaverf update email@example.com 1234
 
 Otherwise, manually specify rooms and devices by typing
 
@@ -55,30 +55,32 @@ Note that if you are already using the iPhone/other app, then your device pairin
 ## How to install on your raspberry pi
     sudo apt-get update
     sudo apt-get upgrade
+    sudo apt-get install ruby git-core gem
     git clone git://github.com/pauly/lightwaverf.git # you don't need much from here, but have the whole source anyway
     cd lightwaverf && crontab cron.tab # set up the timer and energy monitor
     sudo gem install lightwaverf # or build the gem locally, see below
-    cp lightwaverf-config.yml ~ && vi ~/lightwaverf-config.yml # and put in your ip address, calendar, rooms, and devices
+    lightwaverf configure # or lightwaverf update
     lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
 ## How to build the gem from the source
-    gem build lightwaverf.gemspec 
-    sudo gem install ./lightwaverf-0.2.1.gem # or whatever the latest version is
+    gem build lightwaverf.gemspec && sudo gem install ./lightwaverf-0.5.0.gem # or whatever the latest version is
 
-## How to install the website in this repo on a raspberry pi
+## Where did the website in this repo go?
 
-Install node https://gist.github.com/stolsma/3301813 (it takes an hour or so to build node on the pi.)
-Then I built in authentication using twitter too, so that the site can be up and running and public, but you'd need to be authenticated to see the usage graphs, so to do that register an app at dev.twitter.com/apps - don't think it matters what you use for any settings but when it's done go to the oauth settings get  the consumer key and consumer secret, copy config/default.sh.sample config/default.sh and paste those values in. Then there are a couple of depencies I think so
+It is now a submodule in the app folder, though I'm not supporting it right. Instead build a simple one pager with:
 
-    npm install
+    lightwaverf summarise && lightwaverf web > /var/www/lightwaverf.html
 
-Then start the site with
+That presumes you already have a web server running and the document root is /var/www
+Here is some sample output: http://pauly.github.io/lightwaverf/
 
-    source config/default.sh && nohup node app.js &
+Set up the crontab to rebuild the web page regularly
 
-hope that works and the site would then be running on port 3000 on your pi's ip address.
+    # crontab -e
+    # rebuild the website every hour, on the hour
+    0 * * * * /usr/local/bin/lightwaverf web 5 > /var/www/lightwaverf.html
 
-Not sure how stable it is but there is a file called "node" in the repo that you can copy into /etc/init.d/ and it should restart the server when the pi restarts. 
+Todo: make that web page configurable. Any suggestions? If you don't have the energy monitor there is not much on that web page for you right now.
 
 # Usage
 
@@ -108,19 +110,22 @@ Also note that configured exclusions (see below) will apply when controlling mul
 
 Using the special state 'fulloff' will switch off everything, ignoring exclusions (using the special 'alloff' mood:
 
+<<<<<<< HEAD
     lightwaverf lounge all fulloff (set all configured devices to off, ignoring exclusions)
     
 You can also set the state for devices in all rooms (based on you configuration file):
 
     lightwaverf all all fulloff (switch off all devices in all rooms, ignoring exclusions)
     
+=======
+>>>>>>> upstream/master
 Tip: I have found that you can actually pair a single device to 2 different device 'slots' in the same room. So, for example a light could be in slot 1 (D1) and also slot 4 (D4). This allows you to be a bit clever and pair each device to both its own slot and to a 'common' slot, such as this:
 
     Main light D1 & D4
     Side light D2 & D4
     Spotlights D3 & D4
     
-This means that you can set up a 'device' in slot D6 which will actually control all the devices at once. Just remember not to to call it 'all' or 'alloff' as these are used as keywords in the code to do the same thing in a different way as per the above.
+This means that you can set up a 'device' in slot D4 which will actually control all the devices at once. Just remember not to to call it 'all' as this is used as a keyword in the code to do the same thing in a different way as per the above.
 
 ## Mood support
 
@@ -138,10 +143,13 @@ To set a mood:
 
     lightwaverf mood living movie
     
+<<<<<<< HEAD
 You can also execute the special 'fulloff' mood to turn off all devices in that room:
     
     lightwaverf mood living fulloff
         
+=======
+>>>>>>> upstream/master
 To (re)learn a mood with the current device settings:
 
     lightwaverf mood living movie
@@ -160,7 +168,11 @@ And moods are supported in google calendar timers by creating an event with the 
 
     mood living movie
 
+<<<<<<< HEAD
 Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time.
+=======
+Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time
+>>>>>>> upstream/master
 
 ## Sequence support
 
@@ -175,6 +187,7 @@ Note that pauses can be added (in seconds)
         - movie
       - - pause
         - 60
+<<<<<<< HEAD
       - - mood
         - living
         - fulloff
@@ -252,6 +265,11 @@ This would exclude the room from commands directed at all rooms.
           floor: true
 
 This would exclude the device called 'floor' from commands directed at all devices in this room and any commands directed at all rooms that involve looping through the device list. Note that this exclusion will not apply to the special 'fulloff' command which will always control all devices in the room, due to the way it works.
+=======
+      - - living
+        - all
+        - off
+>>>>>>> upstream/master
 
 # Automated timers (via Google Calendar)
 
@@ -260,10 +278,10 @@ This functionality allows you to create simple or complex schedules to automatic
 ## How to set up the google calendar timers
 
   * make yourself a google calendar http://www.google.com/calendar
-    * click on my calendars
+    * click on "my calendars"
     * click on "create a new calendar"
     * add some events called "lounge light"
-    * get the private address address of your calendar by going to calendar settings and clicking on the 'XML' button at the bottom for the private address
+    * get the private address address of your calendar by going to calendar settings and clicking on the XML button at the bottom for the private address
     * put this private address of the calendar into the lightwaverf-config.yml file
     * setup crontab (see below)    
 
@@ -276,22 +294,22 @@ The timer function utilises 2 separate functions that need scheduling with cron 
 
 These processes can be scheduled in cron at different rates. It is unlikely that you will need to run the update timers function very often (unless you want to add new entries in the very near future), but the run timers function should be scheduled fairly frequently to make sure that devices are set near to the requested time. I run the update process every 2 hours, and the run process every 5 minutes as follows:
 
-    59 */2 * * * /usr/local/rvm/gems/ruby-1.9.3-p385/bin/lightwaverf update_timers > /tmp/timer.out
-    */5 * * * * /usr/local/rvm/gems/ruby-1.9.3-p385/bin/lightwaverf run_timers 5 > /tmp/timer.out
+    59 */2 * * * /usr/local/bin/lightwaverf update_timers > /tmp/timer.out
+    */5 * * * * /usr/local/bin/lightwaverf run_timers 5 > /tmp/timer.out
 
 Note that following options can be provided to the update_timers function:
     
-    update_timers 60 1440 true
+    lightwaverf update_timers 60 1440 true
     
 where:
 
 * 60 is the amount of minutes in the past for which to cache entries (see below for why this is useful)
-* 1440 is the amount of minutes in the future to cache entries (essentialyl define how long you can 'survive' without connectivity to gcal)
+* 1440 is the amount of minutes in the future to cache entries (essentially define how long you can 'survive' without connectivity to gcal)
 * true sets debug mode on if needed
 
 Note that following options must/can be provided to the run_timers function:
     
-    run_timers 5 true
+    lightwaverf run_timers 5 true
     
 where:
 
@@ -313,6 +331,11 @@ Once setup, you can create various entries to control as follows:
 You can also set moods using the calendar by creating an event with the following syntax:
 
     mood living movie - set movie mode in the lounge
+<<<<<<< HEAD
+=======
+    living all off - turn everything off in the lounge
+    living all on - turn everything on in the lounge
+>>>>>>> upstream/master
     
 And you can execute sequences using the calendar by creating an eventas follows:
 
@@ -349,6 +372,10 @@ You can also adjust the run time of the event (relative to the actual gcal event
     
 Note that this is useful when using sunset/sunrise based timers (see below)
 
+You can also adjust the run time of the event by a random number of minutes as follows:
+
+    lounge light random 60 - this will adjust the start/end times of the event randomly within the 60 minutes around the actual gcal entry time (ie plus or minus 30 minutes)
+
 Also note that you can only modify the time within the caching time you setup in the cron job for update timers. i.e. you cannot modify an event ahead by 2 hours but only cache historically by 1 hour, as the event will have been purged from the cache by the time you want it run. You will have to configure the caching period on the update timers function to be at least as 'wide' as the biggest time modifier you are using.
 
 ## Sunset/sunrise
@@ -367,15 +394,22 @@ Here are some ideas on things to automate with the timers:
 * Shut everything off at midnight unless there's a party going on (Should be obvious how to do this now!)
 * Time your plugin air freshners to switch on/off throughout the day
 
+<<<<<<< HEAD
 ## Timer Known issues/future improvements
+=======
+## Timer known issues/future improvements
+>>>>>>> upstream/master
 
 * Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
 * Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
 * Improvement: Possibly add some info about which states are currently applicable to the timer log
-* Improvement: Consider adding a 'random' time shift modifier to make holiday security lights more 'realistic'
 
 # History
 
+  * v 0.6.1 fixed timezone issue
+  * v 0.6   randomised timers
+  * v 0.5   build a web page
+  * v 0.4   super timers!
   * v 0.3   changed the format of the config file, adding configure option, and loading config from lightwavehost.co.uk
   * v 0.3.2 eliminated need to specify WiFi Link IP address (host) in config, added option to update WiFi Link timezone and added ability to turn off all devices in a room
 

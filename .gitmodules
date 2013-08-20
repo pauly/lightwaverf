@@ -1,0 +1,3 @@
+[submodule "app"]
+	path = app
+	url = http://github.com/pauly/lightwaverf-app.git
