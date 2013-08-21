@@ -30,11 +30,12 @@ class LightWaveRF
   # Display usage info
   def usage room = nil
     rooms = self.class.get_rooms self.get_config
-    config = 'usage: lightwaverf ' + rooms.values.first['name'] + ' ' + rooms.values.first['device'].keys.first.to_s + ' on # where "' + rooms.keys.first + '" is a room in ' + self.get_config_file
+    config = 'usage: lightwaverf ' + rooms.values.first['name'].to_s + ' ' + rooms.values.first['device'].keys.first.to_s + ' on'
+    config += ' # where "' + rooms.keys.first.to_s + '" is a room in ' + self.get_config_file.to_s
     if room and rooms[room]
-      config += "\ntry: lightwaverf " + rooms[room]['name'] + ' all on'
+      config += "\ntry: lightwaverf " + rooms[room]['name'].to_s + ' all on'
       rooms[room]['device'].each do | device |
-        config += "\ntry: lightwaverf " + rooms[room]['name'] + ' ' + device.first.to_s + ' on'
+        config += "\ntry: lightwaverf " + rooms[room]['name'].to_s + ' ' + device.first.to_s + ' on'
       end
     end
     config
@@ -45,8 +46,8 @@ class LightWaveRF
     help = self.usage + "\n"
     help += "your rooms, devices, and sequences, as defined in " + self.get_config_file + ":\n\n"
     help += YAML.dump self.get_config['room']
-    room = self.get_config['room'].last['name']
-    device = self.get_config['room'].last['device'].last
+    room = self.get_config['room'].last['name'].to_s
+    device = self.get_config['room'].last['device'].last.to_s
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
@@ -609,15 +610,21 @@ class LightWaveRF
     # url = LightWaveRF.new.get_config['calendar']
     url = self.get_config['calendar']
 
-    url += '?ctz=' + Time.new.zone
-    # url += '?ctz=UTC'
-    if Time.new.zone != 'UTC'
+    ctz = 'UTC'
+    case Time.new.zone
+    when 'BST'
+      ctz = 'Europe/London'
+    else
       p 'time zone is ' + Time.new.zone + ' so look out...'
+    end
+    url += '?ctz=' + ctz
+    if ctz != 'UTC'
+      p 'using time zone is ' + ctz + ' so look out...'
     end
 
     url += '&singleevents=true'
-    url += '&start-min=' + query_start.strftime( '%FT%T%:z' ).sub('+', '%2B')
-    url += '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub('+', '%2B')
+    url += '&start-min=' + query_start.strftime( '%FT%T%:z' ).sub( '+', '%2B' )
+    url += '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub( '+', '%2B' )
     debug and ( p url )
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
