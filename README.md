@@ -290,6 +290,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.6.3 fix corrupted devices in config
   * v 0.6.2 another timezone fix
   * v 0.6.1 fixed timezone issue
   * v 0.6   randomised timers

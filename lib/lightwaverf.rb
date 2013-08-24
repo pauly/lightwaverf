@@ -6,7 +6,6 @@
 # Add info about states to timer log
 # Build / update cron job automatically
 
-
 require 'yaml'
 require 'socket'
 require 'net/http'
@@ -179,6 +178,15 @@ class LightWaveRF
         self.put_config
       end
       @config = YAML.load_file self.get_config_file
+      # fix where device names became arrays somehow
+      if @config['room']
+        @config['room'].map! do | room |
+          room['device'].map! do | device |
+            device = device.kind_of?( Array ) ? device[0] : device
+          end
+          room
+        end
+      end
     end
     @config
   end
