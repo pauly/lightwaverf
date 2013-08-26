@@ -18,6 +18,21 @@ No need to do anything with this repo unless you are particularly interested.
 
 This code is unofficial and unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf / @pauly
 
+## Problems installing?
+
+If you get an error along the lines of
+
+    /usr/bin/ruby1.9.1 extconf.rb
+    /usr/lib/ruby/1.9.1/rubygems/custom_require.rb:36:in `require’: cannot load such file — mkmf (LoadError)
+    from /usr/lib/ruby/1.9.1/rubygems/custom_require.rb:36:in `require’
+    from extconf.rb:1:in `’
+
+try
+
+    sudo apt-get install ruby1.9.1-dev
+
+I think this is down to the json library I am using, but haven't tracked it down yet. If you can help, please pull request!
+
 ## Setup config
 
 You need a yml config file in your home directory, to build one, if you have already uploaded your data to the LightwaveRF server, download this data by typing
@@ -290,6 +305,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.6.4 stop "update" corrupting config
   * v 0.6.3 fix corrupted devices in config
   * v 0.6.2 another timezone fix
   * v 0.6.1 fixed timezone issue

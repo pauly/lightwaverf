@@ -178,9 +178,10 @@ class LightWaveRF
         self.put_config
       end
       @config = YAML.load_file self.get_config_file
-      # fix where device names became arrays somehow
+      # fix where update made names and devices into arrays
       if @config['room']
         @config['room'].map! do | room |
+          room['name'] = room['name'].kind_of?( Array ) ? room['name'][0] : room['name']
           room['device'].map! do | device |
             device = device.kind_of?( Array ) ? device[0] : device
           end
@@ -286,8 +287,10 @@ class LightWaveRF
     #   var gRoomStatus = [""]
     # http://rubular.com/r/UH0H4b4afF
     body.scan( /var (gDeviceNames|gDeviceStatus|gRoomNames|gRoomStatus)\s*=\s*([^;]*)/ ).each do | variable |
+      debug and ( p variable.to_s )
       if variable[0]
-        variables[variable[0]] = variable[1].scan /"([^"]*)\"/
+        variables[variable[0]] = variable[1].scan( /"([^"]*)\"/ ).map! do | v | v.pop end
+        debug and ( p 'variables[' + variable[0] + '] = ' + variables[variable[0]].to_s )
       end
     end
     debug and ( p '[Info - LightWaveRF Gem] so variables are ' + variables.inspect )
