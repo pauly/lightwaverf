@@ -793,6 +793,11 @@ class LightWaveRF
           # populate the dates
           event['date'] = start_dt
           # handle device entries without explicit on/off state
+
+          # has a PROBLEM with a calendar event set to turn lights to 50% say - automatically adds an off!
+          # fix this with something like
+          #   if self.get_state event['state'] ! starts with F
+
           if event['type'] == 'device' and ( event['state'].nil? or ( event['state'] != 'on' and event['state'] != 'off' ))
             debug and ( p 'Duplicating event without explicit on/off state...' )
             # if not state was given, assume we meant 'on'
@@ -1013,6 +1018,17 @@ class LightWaveRF
     content.to_s
   end
 
+  def self.get_json file
+    json = { }
+    content = self.get_contents file
+    begin
+      json = JSON.parse content
+    rescue
+      STDERR.puts 'cannot parse ' + file.to_s
+    end
+    json
+  end
+
   def build_web_page debug = nil
 
     rooms = self.class.get_rooms self.get_config
@@ -1085,9 +1101,8 @@ class LightWaveRF
   def summarise days = 7, debug = nil
     days = days.to_i
     data = [ ]
-      file = self.get_summary_file.gsub 'summary', 'daily'
-      json = self.class.get_contents file
-      daily = JSON.parse json
+    file = self.get_summary_file.gsub 'summary', 'daily'
+    daily = self.class.get_json file
     start_date = 0
     d = nil
     File.open( self.get_log_file, 'r' ).each_line do | line |

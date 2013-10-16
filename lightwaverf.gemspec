@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'lightwaverf'
-  s.version     = '0.6.4'
+  s.version     = '0.6.6'
   s.date        = Time.now.strftime '%Y-%m-%d'
   s.summary     = 'Home automation with lightwaverf'
   s.description = <<-end
