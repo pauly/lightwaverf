@@ -392,7 +392,7 @@ class LightWaveRF
   def timezone debug = false
     command = '666,!FzP' + (Time.now.gmt_offset/60/60).to_s
     debug and ( puts '[Info - LightWaveRF] timezone: command is ' + command )
-    data = self.raw command
+    data = self.raw command, true
     debug and ( puts '[Info - LightWaveRF] timezone: response is ' + data )
     return (data == "666,OK\r\n")
   end
@@ -544,7 +544,7 @@ class LightWaveRF
 
   def energy title = nil, note = nil, debug = false
     debug and note and ( p 'energy: ' + note )
-    data = self.raw '666,@?'
+    data = self.raw '666,@?', true
     debug and ( p data )
     # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match data # ruby 1.9 only?
     match = /W=(\d+),(\d+),(\d+),(\d+)/.match data
@@ -581,7 +581,7 @@ class LightWaveRF
     end
   end
 
-  def raw command
+  def raw command, listen = false
     response = nil
     # Get host address or broadcast address
     host = self.get_config['host'] || '255.255.255.255'
@@ -599,9 +599,9 @@ class LightWaveRF
         response = "can't bind to listen for a reply"
       end
       # Broadcast command to server
-      listener.send(command, 0, host, 9760)
+      listener.send command, 0, host, 9760
       # Receive response
-      if ! response
+      if listen and ! response
         response, addr = listener.recvfrom 200
       end
       listener.close
