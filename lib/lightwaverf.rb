@@ -542,8 +542,8 @@ class LightWaveRF
     end
   end
 
-  def energy title = nil, note = nil, debug = false
-    debug and note and ( p 'energy: ' + note )
+  def energy title = nil, text = nil, debug = false
+    debug and text and ( p 'energy: ' + text )
     data = self.raw '666,@?'
     debug and ( p data )
     # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match data # ruby 1.9 only?
@@ -558,8 +558,38 @@ class LightWaveRF
         }
       }
       data['timestamp'] = Time.now.to_s
-      if note
-        data['message']['annotation'] = { 'title' => title.to_s, 'text' => note.to_s }
+      if text
+        data['message']['annotation'] = { 'title' => title.to_s, 'text' => text.to_s }
+      end
+
+      if text
+        if self.get_config['spreadsheet']
+          spreadsheet = self.get_config['spreadsheet']['url']
+          match = /key=([\w-]+)/.match spreadsheet
+          debug and ( p match )
+          if match
+            spreadsheet = match[1]
+          end
+          debug and ( p 'spreadsheet is ' + spreadsheet )
+          if spreadsheet
+            require 'google_drive'
+            session = GoogleDrive.login self.get_config['spreadsheet']['username'], self.get_config['spreadsheet']['password']
+            ws = session.spreadsheet_by_key( spreadsheet ).worksheets[0]
+            rows = ws.num_rows
+            debug and ( p rows.to_s + ' rows in ' + spreadsheet )
+            row = rows + 1
+            ws[ row, 1 ] = data['timestamp']
+            ws[ row, 2 ] = data['message']['usage']
+            ws[ row, 3 ] = data['message']['max']
+            ws[ row, 4 ] = data['message']['today']
+            ws[ row, 5 ] = data['message']['annotation']['title']
+            ws[ row, 6 ] = data['message']['annotation']['text']
+            ws.save( )
+          end
+        else
+          debug and ( p 'no spreadsheet in your config file...' )
+        end
+
       end
       debug and ( p data )
       begin
@@ -567,13 +597,7 @@ class LightWaveRF
           f.write( data.to_json + "\n" )
         end
         file = self.get_summary_file.gsub 'summary', 'daily'
-        json = self.class.get_contents file
-        begin
-          data['message']['history'] = JSON.parse json
-        rescue => e
-          data['message']['error'] = 'error parsing ' + file + '; ' + e.to_s
-          data['message']['history_json'] = json
-        end
+        data['message']['history'] = self.class.get_json file
         data['message']
       rescue
         puts 'error writing to log'
