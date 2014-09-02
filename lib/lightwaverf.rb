@@ -22,9 +22,10 @@ class LightWaveRF
   @config_file = nil
   @log_file = nil
   @summary_file = nil
-  @log_timer_file = nil
+  @timer_log_file = nil
   @config = nil
   @timers = nil
+  @time = nil
 
   # Display usage info
   def usage room = nil
@@ -38,6 +39,11 @@ class LightWaveRF
       end
     end
     config
+  end
+
+  def time label = nil
+    @time = @time || Time.now
+    label.to_s + ' (' + ( Time.now - @time ).to_s + ')'
   end
 
   # Display help
@@ -56,11 +62,11 @@ class LightWaveRF
   #   debug: (Boolean
   def configure debug = false
     config = self.get_config
-    # puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
-    # host = STDIN.gets.chomp
-    # if ! host.to_s.empty?
-    #   config['host'] = host
-    # end
+    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
+    host = STDIN.gets.chomp
+    if ! host.to_s.empty?
+      config['host'] = host
+    end
     puts 'What is the address of your google calendar? (' + self.get_config['calendar'] + '). Optional!'
     calendar = STDIN.gets.chomp
     if ! calendar.to_s.empty?
@@ -302,13 +308,13 @@ class LightWaveRF
     rooms = { }
     r = 1
     config['room'].each do | room |
-      debug and ( puts room['name'] + ' = R' + r.to_s )
+      # debug and ( puts room['name'] + ' = R' + r.to_s )
       rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'mood' => { }, 'learnmood' => { }}
       d = 1
       unless room['device'].nil?
         room['device'].each do | device |
           # @todo possibly need to complicate this to get a device name back in here
-          debug and ( puts ' - ' + device + ' = D' + d.to_s )
+          debug and ( puts ' - ' + device.to_s + ' = D' + d.to_s + ' uh oh device should be a string!' )
           rooms[room['name']]['device'][device] = 'D' + d.to_s
           d += 1
         end
@@ -411,9 +417,11 @@ class LightWaveRF
   #   device: (String)
   #   state: (String)
   def send room = nil, device = nil, state = 'on', debug = false
+    debug and ( p self.time 'send' )
     success = false
     debug and ( p 'Executing send on device: ' + device + ' in room: ' + room + ' with state: ' + state )
     rooms = self.class.get_rooms self.get_config, debug
+    debug and ( p self.time 'got rooms' )
 
     unless rooms[room] and state
       debug and ( p 'Missing room (' + room.to_s + ') or state (' + state.to_s + ')' );
@@ -432,9 +440,9 @@ class LightWaveRF
       elsif device and rooms[room]['device'][device]
         state = self.class.get_state state
         command = self.command rooms[room], device, state
-        debug and ( p 'command is ' + command )
+        debug and ( p self.time 'command is ' + command )
         data = self.raw command
-        debug and ( p 'response is ' + data )
+        debug and ( p self.time 'response is ' + data.to_s )
         success = true
       else
         STDERR.puts self.usage( room );
@@ -606,29 +614,40 @@ class LightWaveRF
   end
 
   def raw command, listen = false
+    p self.time 'raw ' + command
     response = nil
     # Get host address or broadcast address
     host = self.get_config['host'] || '255.255.255.255'
+    p self.time 'got ' + host
     # Create socket
     listener = UDPSocket.new
+    p self.time 'got listener'
     # Add broadcast socket options if necessary
-    if (host == '255.255.255.255')
+    if host == '255.255.255.255'
       listener.setsockopt(Socket::SOL_SOCKET, Socket::SO_BROADCAST, true)
     end
     if listener
-      # Bind socket to listen for response
-      begin
-        listener.bind '0.0.0.0',9761
-      rescue
-        response = "can't bind to listen for a reply"
+      if listen
+        # Bind socket to listen for response
+        begin
+          listener.bind '0.0.0.0', 9761
+        rescue
+          response = "can't bind to listen for a reply"
+        end
       end
       # Broadcast command to server
+      p self.time 'sending...'
       listener.send command, 0, host, 9760
+      p self.time 'sent'
       # Receive response
       if listen and ! response
+        p self.time 'receiving...'
         response, addr = listener.recvfrom 200
+        p self.time 'received'
       end
+      p self.time 'closing...'
       listener.close
+      p self.time 'closed'
     end
     response
   end
@@ -1129,9 +1148,14 @@ class LightWaveRF
     daily = self.class.get_json file
     start_date = 0
     d = nil
+    last = nil
     File.open( self.get_log_file, 'r' ).each_line do | line |
-      line = JSON.parse line
-      if line and line['timestamp']
+      begin
+        line = JSON.parse line
+      rescue
+        line = nil
+      end
+      if line and line['timestamp'] and ( last != line['message']['usage'] )
         new_line = []
         d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
         ts = Time.parse( line['timestamp'] ).strftime '%s'
@@ -1152,6 +1176,7 @@ class LightWaveRF
           daily[d] = line['message']
           daily[d].delete 'usage'
         end
+        last = line['message']['usage']
       end
     end
     debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
@@ -1165,7 +1190,8 @@ class LightWaveRF
     end
     summary_file = self.get_summary_file
     File.open( summary_file, 'w' ) do |file|
-      file.write data.to_s
+      # file.write data.to_s
+      file.write( JSON.pretty_generate( data ))
     end
     # @todo fix the daily stats, every night it reverts to the minimum value because the timezones are different
     # so 1am on the wifi-link looks midnight on the server

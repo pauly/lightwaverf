@@ -112,5 +112,37 @@ var cksecret = "AAAAAAAA";$.cookie("cksecret"  , "AAAAAAAA" );$.cookie("ckemail"
     assert v <= 5
   end
 
+  def test_get_rooms_old_style
+    config = <<-END
+room:
+- name: our
+  device:
+  - light
+  - lights
+    END
+    config = YAML.load config
+    rooms = LightWaveRF.get_rooms config, true
+    # assert_equal rooms['our']['device'], { 'light' => 'D1', 'lights' => 'D2' } # old way
+    assert_equal rooms['our']['device'], { 'light' => { 'id' => 'D1' }, 'lights' => { id => 'D2' }}
+  end
+
+  def test_get_rooms_new_style
+    config = <<-END
+room:
+- name: our
+  device:
+  - name: light
+    type: light
+    status: on
+  - name: lights
+    type: light
+    status: on
+    END
+    config = YAML.load config
+    rooms = LightWaveRF.get_rooms config, true
+    # assert_equal rooms['our']['device'], { 'light' => 'D1', 'lights' => 'D2' } # old way
+    assert_equal rooms['our']['device'], { 'light' => { 'id' => 'D1', 'type' => 'light', 'status' => 'on' }, 'lights' => { id => 'D2', 'type' => 'light', 'status' => 'on' }}
+  end
+
 end
 
