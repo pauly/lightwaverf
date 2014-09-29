@@ -305,6 +305,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.7   log to spreadsheet, fixes for broken firmware
   * v 0.6.4 stop "update" corrupting config
   * v 0.6.3 fix corrupted devices in config
   * v 0.6.2 another timezone fix
