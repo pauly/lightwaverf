@@ -308,7 +308,6 @@ class LightWaveRF
     rooms = { }
     r = 1
     config['room'].each do | room |
-      # debug and ( puts room['name'] + ' = R' + r.to_s )
       rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'mood' => { }, 'learnmood' => { }}
       d = 1
       unless room['device'].nil?
