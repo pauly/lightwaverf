@@ -396,11 +396,9 @@ class LightWaveRF
   # Arguments:
   #   debug: (Boolean)
   def timezone debug = false
-    command = '666,!FzP' + (Time.now.gmt_offset/60/60).to_s
-    debug and ( puts '[Info - LightWaveRF] timezone: command is ' + command )
-    data = self.raw command, true
-    debug and ( puts '[Info - LightWaveRF] timezone: response is ' + data )
-    return (data == "666,OK\r\n")
+    command = '666,!FzP' + ( Time.now.gmt_offset/60/60 ).to_s
+    data = self.raw command, true, debug
+    return data == "666,OK\r\n"
   end
 
   # Turn one of your devices on or off or all devices in a room off
@@ -539,7 +537,6 @@ class LightWaveRF
   #   mood: (String)
   def learnmood room = nil, mood = nil, debug = false
     debug and (p 'Learning mood: ' + mood)
-    #debug and ( puts 'config is ' + self.get_config.to_s )
     rooms = self.class.get_rooms self.get_config
     if rooms[room] and mood and rooms[room]['learnmood'][mood]
       command = self.command rooms[room], nil, rooms[room]['learnmood'][mood]
@@ -553,7 +550,6 @@ class LightWaveRF
   def energy title = nil, text = nil, debug = false
     debug and text and ( p 'energy: ' + text )
     data = self.raw '666,@?', true
-    debug and ( p data )
     # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match data # ruby 1.9 only?
     match = /W=(\d+),(\d+),(\d+),(\d+)/.match data
     debug and ( p match )
@@ -613,18 +609,18 @@ class LightWaveRF
     end
   end
 
-  def raw command, listen = false
-    p self.time 'raw ' + command
+  def raw command, listen = false, debug = false
+    debug and ( p self.time + ' ' + __method__.to_s + ' ' + command )
     response = nil
     # Get host address or broadcast address
     host = self.get_config['host'] || '255.255.255.255'
-    p self.time 'got ' + host
+    debug and ( p self.time 'got ' + host )
     # Create socket
     listener = UDPSocket.new
-    p self.time 'got listener'
+    debug and ( p self.time 'got listener' )
     # Add broadcast socket options if necessary
     if host == '255.255.255.255'
-      listener.setsockopt(Socket::SOL_SOCKET, Socket::SO_BROADCAST, true)
+      listener.setsockopt Socket::SOL_SOCKET, Socket::SO_BROADCAST, true
     end
     if listener
       if listen
@@ -636,25 +632,26 @@ class LightWaveRF
         end
       end
       # Broadcast command to server
-      p self.time 'sending...'
+      debug and ( p self.time 'sending...' )
       listener.send command, 0, host, 9760
-      p self.time 'sent'
+      debug and ( p self.time 'sent' )
       # Receive response
       if listen and ! response
-        p self.time 'receiving...'
+        debug and ( p self.time 'receiving...' )
         response, addr = listener.recvfrom 200
-        p self.time 'received'
+        debug and ( p self.time 'received' )
       end
-      p self.time 'closing...'
+      debug and ( p self.time 'closing...' )
       listener.close
-      p self.time 'closed'
+      debug and ( p self.time 'closed' )
     end
+    debug and ( puts '[Info - LightWaveRF] ' + __method__.to_s + ': response is ' + response.to_s )
     response
   end
 
   def update_timers past = 60, future = 1440, debug = false
     p '----------------'
-    p "Updating timers..."
+    p 'Updating timers...'
 
     # determine the window to query
     now = Time.new
@@ -1201,6 +1198,11 @@ class LightWaveRF
     File.open( summary_file.gsub( 'summary', 'daily.' + d ), 'w' ) do | file |
       file.write daily.select { |key| key == daily.keys.last }.to_json.to_s
     end
+  end
+
+  # http://lightwaverfcommunity.org.uk/forums/topic/link-no-longer-responding-to-udp-commands-any-advice/page/4/#post-16098
+  def firmware debug = true
+    self.raw '666,!F*p', true, debug
   end
 
 end

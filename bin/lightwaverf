@@ -4,6 +4,10 @@ obj = LightWaveRF.new
 case ARGV[0]
   when 'help'
     puts obj.help
+  when 'initlink'
+    puts obj.firmware ARGV[1]
+  when 'firmware'
+    puts obj.firmware ARGV[1]
   when 'timezone'
     puts obj.timezone ARGV[1]
   when 'configure'
