@@ -1092,7 +1092,7 @@ class LightWaveRF
       Sample page generated #{date} with <code>lightwaverf web</code>.
       Check out <a href="https://github.com/pauly/lightwaverf">the new simplified repo</a> for details
       or <a href="https://rubygems.org/gems/lightwaverf">gem install lightwaverf && lightwaverf web</a>...
-      <br />@todo make a decent, useful, simple, configurable web page...
+      <br />still @todo make a decent, useful, simple, configurable web page...
     end
     help = list
     html = <<-end
@@ -1156,10 +1156,9 @@ class LightWaveRF
         d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
         ts = Time.parse( line['timestamp'] ).strftime '%s'
         ts = ts.to_i
-        if start_date > 0
-          ts = ts - start_date
-        else
-          start_date = ts
+        ts = ts - start_date
+        if start_date == 0
+          # start_date = ts # can't get this delta working
         end
         new_line << ts
         new_line << line['message']['usage'].to_i / 10
