@@ -142,7 +142,7 @@ class LightWaveRF
     end
     unless message.nil?
       File.open( self.get_timer_log_file, 'a' ) do | f |
-        f.write("\n" + Time.now.to_s + ' - ' + message + ' - ' + ( result ? 'SUCCESS!' : 'FAILED!' ))
+        f.write( "\n" + Time.now.to_s + ' - ' + message + ' - ' + ( result ? 'SUCCESS!' : 'FAILED!' ))
       end
     end
   end
@@ -216,7 +216,7 @@ class LightWaveRF
     uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'
     http = Net::HTTP.new uri.host, uri.port
     if uri.scheme == 'https'
-        http.use_ssl = true
+      http.use_ssl = true
     end
     data = 'pin=' + pin + '&email=' + email
     headers = { 'Content-Type'=> 'application/x-www-form-urlencoded' }
@@ -268,7 +268,7 @@ class LightWaveRF
           #   o: All Off
           deviceStatusIndex = roomIndex * 10 + deviceIndex
           if variables['gDeviceStatus'] and variables['gDeviceStatus'][deviceStatusIndex] and variables['gDeviceStatus'][deviceStatusIndex][0] != 'I'
-            roomDevices << deviceName
+            roomDevices << { 'name' => deviceName }
           end
         end
         # Create a hash of the active room and active devices and add to rooms array
@@ -312,9 +312,14 @@ class LightWaveRF
       d = 1
       unless room['device'].nil?
         room['device'].each do | device |
-          # @todo possibly need to complicate this to get a device name back in here
-          debug and ( puts ' - ' + device.to_s + ' = D' + d.to_s + ' uh oh device should be a string!' )
-          rooms[room['name']]['device'][device] = 'D' + d.to_s
+          if device.is_a? Array
+            device = device.first
+          end
+          if device.is_a? String
+            device = { 'name' => device }
+          end
+          device['id'] = 'D' + d.to_s
+          rooms[room['name']]['device'][device['name']] = device
           d += 1
         end
       end
@@ -379,9 +384,10 @@ class LightWaveRF
   #   state: (String)
   def command room, device, state
     # @todo get the device name in here...
+    device = device.to_s
     # Command structure is <transaction number>,<Command>|<Action>|<State><cr>
     if room and device and !device.empty? and state
-      '666,!' + room['id'] + room['device'][device] + state + '|Turn ' + room['name'] + ' ' + device + '|' + state + ' via @pauly'
+      '666,!' + room['id'] + room['device'][device]['id'] + state + '|Turn ' + room['name'] + ' ' + device + '|' + state + ' via @pauly'
     else
       '666,!' + room['id'] + state + '|Turn ' + room['name'] + '|' + state + ' via @pauly'
     end
@@ -513,8 +519,8 @@ class LightWaveRF
           state = mood[3..-1]
           debug and (p 'Selected state is: ' + state)
           rooms[room]['device'].each do | device |
-            p 'Processing device: ' + device[0]
-            self.send room, device[0], state, debug
+            p 'Processing device: ' + device[0].to_s
+            self.send room, device[0]['name'], state, debug
             sleep 1
           end
           success = true
@@ -1022,15 +1028,16 @@ class LightWaveRF
         p 'Executing sequence. Sequence: ' + event['state']
         result = self.sequence event['state'], debug
       else
-        p 'Executing device. Room: ' + event['room'] + ', Device: ' + event['device'] + ', State: ' + event['state']
-        result = self.send event['room'], event['device'], event['state'], debug
+        p 'Executing device. Room: ' + event['room'] + ', Device: ' + event['device'].to_s + ', State: ' + event['state']
+        # result = self.send event['room'], event['device']['name'], event['state'], debug
+        result = self.send event['room'], event['device'].to_s, event['state'], debug # is this right?
       end
       sleep 1
-      triggered << [ event['room'], event['device'], event['state'] ]
+      triggered << [ event['room'], event['device'].to_s, event['state'] ]
       if event['annotate']
         annotate = true
       end
-      self.log_timer_event event['type'], event['room'], event['device'], event['state'], result
+      self.log_timer_event event['type'], event['room'], event['device'].to_s, event['state'], result
     end
 
     # update energy log

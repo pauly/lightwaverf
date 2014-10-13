@@ -3,6 +3,51 @@ require File.dirname( __FILE__ ) + '/../lib/lightwaverf.rb'
 
 class LightWaveRFTest < Test::Unit::TestCase
 
+  def test_get_rooms_old_style
+    config = <<-END
+room:
+- name: our
+  device:
+  - light
+  - lights
+    END
+    config = YAML.load config
+    rooms = LightWaveRF.get_rooms config, true
+    p rooms['our']['device']
+    assert_equal rooms['our']['device'], { 'light' => { 'id' => 'D1', 'name' => 'light' }, 'lights' => { 'id' => 'D2', 'name' => 'lights' }}
+  end
+
+  def test_get_rooms_broken_style
+    config = <<-END
+room:
+- name: our
+  device:
+  - - light
+  - - lights
+    END
+    config = YAML.load config
+    rooms = LightWaveRF.get_rooms config, true
+    p rooms['our']['device']
+    assert_equal rooms['our']['device'], { 'light' => { 'id' => 'D1', 'name' => 'light' }, 'lights' => { 'id' => 'D2', 'name' => 'lights' }}
+  end
+
+  def test_get_rooms_new_style
+    config = <<-END
+room:
+- name: our
+  device:
+  - name: light
+    type: light
+    status: on
+  - name: lights
+    type: light
+    status: on
+    END
+    config = YAML.load config
+    rooms = LightWaveRF.get_rooms config, true
+    assert_equal rooms['our']['device'], { 'light' => { 'name' => 'light', 'id' => 'D1', 'type' => 'light', 'status' => true }, 'lights' => { 'name' => 'lights', 'id' => 'D2', 'type' => 'light', 'status' => true }}
+  end
+
   def test_default_state_on
     assert_equal 'F1', LightWaveRF.get_state
   end
@@ -110,38 +155,6 @@ var cksecret = "AAAAAAAA";$.cookie("cksecret"  , "AAAAAAAA" );$.cookie("ckemail"
     assert v != nil
     assert v >= -5
     assert v <= 5
-  end
-
-  def test_get_rooms_old_style
-    config = <<-END
-room:
-- name: our
-  device:
-  - light
-  - lights
-    END
-    config = YAML.load config
-    rooms = LightWaveRF.get_rooms config, true
-    # assert_equal rooms['our']['device'], { 'light' => 'D1', 'lights' => 'D2' } # old way
-    assert_equal rooms['our']['device'], { 'light' => { 'id' => 'D1' }, 'lights' => { id => 'D2' }}
-  end
-
-  def test_get_rooms_new_style
-    config = <<-END
-room:
-- name: our
-  device:
-  - name: light
-    type: light
-    status: on
-  - name: lights
-    type: light
-    status: on
-    END
-    config = YAML.load config
-    rooms = LightWaveRF.get_rooms config, true
-    # assert_equal rooms['our']['device'], { 'light' => 'D1', 'lights' => 'D2' } # old way
-    assert_equal rooms['our']['device'], { 'light' => { 'id' => 'D1', 'type' => 'light', 'status' => 'on' }, 'lights' => { id => 'D2', 'type' => 'light', 'status' => 'on' }}
   end
 
 end
