@@ -1152,6 +1152,7 @@ class LightWaveRF
     start_date = 0
     d = nil
     last = nil
+    prev = nil
     File.open( self.get_log_file, 'r' ).each_line do | line |
       begin
         line = JSON.parse line
@@ -1168,7 +1169,11 @@ class LightWaveRF
           # start_date = ts # can't get this delta working
         end
         new_line << ts
-        new_line << line['message']['usage'].to_i / 10
+        smoothedUsage = line['message']['usage'].to_i
+        if last && prev
+          smoothedUsage = ( smoothedUsage + last + prev ) / 3 # average of last 3 readings
+        end
+        new_line << smoothedUsage / 10
         if line['message']['annotation'] and line['message']['annotation']['title'] and line['message']['annotation']['text']
           new_line << line['message']['annotation']['title']
           new_line << line['message']['annotation']['text']
@@ -1178,7 +1183,8 @@ class LightWaveRF
           daily[d] = line['message']
           daily[d].delete 'usage'
         end
-        last = line['message']['usage']
+        prev = last
+        last = line['message']['usage'].to_i
       end
     end
     debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
