@@ -41,6 +41,7 @@ class LightWaveRF
     config
   end
 
+  # For debug timing, why is this so slow?
   def time label = nil
     @time = @time || Time.now
     label.to_s + ' (' + ( Time.now - @time ).to_s + ')'
@@ -64,14 +65,10 @@ class LightWaveRF
     config = self.get_config
     puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
     host = STDIN.gets.chomp
-    if ! host.to_s.empty?
-      config['host'] = host
-    end
+    config['host'] = host if ! host.to_s.empty?
     puts 'What is the address of your google calendar? (' + self.get_config['calendar'] + '). Optional!'
     calendar = STDIN.gets.chomp
-    if ! calendar.to_s.empty?
-      config['calendar'] = calendar
-    end
+    config['calendar'] = calendar if ! calendar.to_s.empty?
     device = 'x'
     while ! device.to_s.empty?
       puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Enter a blank line to finish.'
@@ -185,15 +182,15 @@ class LightWaveRF
       end
       @config = YAML.load_file self.get_config_file
       # fix where update made names and devices into arrays
-      if @config['room']
-        @config['room'].map! do | room |
-          room['name'] = room['name'].kind_of?( Array ) ? room['name'][0] : room['name']
-          room['device'].map! do | device |
-            device = device.kind_of?( Array ) ? device[0] : device
-          end
-          room
-        end
-      end
+      # if @config['room']
+      #   @config['room'].map! do | room |
+      #     room['name'] = room['name'].kind_of?( Array ) ? room['name'][0] : room['name']
+      #     room['device'].map! do | device |
+      #       device = device.kind_of?( Array ) ? device[0] : device
+      #     end
+      #     room
+      #   end
+      # end
     end
     @config
   end
@@ -215,9 +212,7 @@ class LightWaveRF
     # Login to LightWaveRF Host server
     uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'
     http = Net::HTTP.new uri.host, uri.port
-    if uri.scheme == 'https'
-      http.use_ssl = true
-    end
+    http.use_ssl = true if uri.scheme == 'https'
     data = 'pin=' + pin + '&email=' + email
     headers = { 'Content-Type'=> 'application/x-www-form-urlencoded' }
     resp, data = http.post uri.request_uri, data, headers
@@ -268,7 +263,7 @@ class LightWaveRF
           #   o: All Off
           deviceStatusIndex = roomIndex * 10 + deviceIndex
           if variables['gDeviceStatus'] and variables['gDeviceStatus'][deviceStatusIndex] and variables['gDeviceStatus'][deviceStatusIndex][0] != 'I'
-            roomDevices << { 'name' => deviceName }
+            roomDevices << { 'name' => deviceName, 'type' => variables['gDeviceStatus'][deviceStatusIndex][0] }
           end
         end
         # Create a hash of the active room and active devices and add to rooms array
@@ -304,20 +299,17 @@ class LightWaveRF
   end
 
   # Get a cleaned up version of the rooms and devices from the config file
-  def self.get_rooms config = { 'room' => [ ]}, debug = false
+  def self.get_rooms config = { 'room' => [ ] }, debug = false
     rooms = { }
     r = 1
     config['room'].each do | room |
+      room = room.first if room.is_a? Array
       rooms[room['name']] = { 'id' => 'R' + r.to_s, 'name' => room['name'], 'device' => { }, 'mood' => { }, 'learnmood' => { }}
       d = 1
       unless room['device'].nil?
         room['device'].each do | device |
-          if device.is_a? Array
-            device = device.first
-          end
-          if device.is_a? String
-            device = { 'name' => device }
-          end
+          device = device.first if device.is_a? Array
+          device = { 'name' => device } if device.is_a? String
           device['id'] = 'D' + d.to_s
           rooms[room['name']]['device'][device['name']] = device
           d += 1
@@ -493,15 +485,14 @@ class LightWaveRF
   #   mood: (String)
   def mood room = nil, mood = nil, debug = false
     success = false
-    debug and (p 'Executing mood: ' + mood + ' in room: ' + room)
-    #debug and ( puts 'config is ' + self.get_config.to_s )
+    debug and ( p 'Executing mood: ' + mood + ' in room: ' + room )
     rooms = self.class.get_rooms self.get_config
     # support for setting a mood in all rooms (recursive)
     if room == 'all'
-      debug and ( p "Processing all rooms..." )
+      debug and ( p 'Processing all rooms...' )
       rooms.each do | config, each_room |
         room = each_room['name']
-        debug and ( p "Room is: " + room )
+        debug and ( p 'Room is: ' + room )
         success = self.mood room, mood, debug
         sleep 1
       end
@@ -541,7 +532,7 @@ class LightWaveRF
   #   room: (String)
   #   mood: (String)
   def learnmood room = nil, mood = nil, debug = false
-    debug and (p 'Learning mood: ' + mood)
+    debug and ( p 'Learning mood: ' + mood )
     rooms = self.class.get_rooms self.get_config
     if rooms[room] and mood and rooms[room]['learnmood'][mood]
       command = self.command rooms[room], nil, rooms[room]['learnmood'][mood]
