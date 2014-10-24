@@ -60,13 +60,13 @@ class LightWaveRF
   # Configure, build config file. Interactive command line stuff
   #
   # Arguments:
-  #   debug: (Boolean
+  #   debug: (Boolean)
   def configure debug = false
     config = self.get_config
-    puts 'What is the ip address of your wifi link? (' + self.get_config['host'] + '). Enter a blank line to broadcast UDP commands.'
+    puts 'What is the ip address of your wifi link? (' + self.get_config['host'].to_s + '). Enter a blank line to broadcast UDP commands.'
     host = STDIN.gets.chomp
     config['host'] = host if ! host.to_s.empty?
-    puts 'What is the address of your google calendar? (' + self.get_config['calendar'] + '). Optional!'
+    puts 'What is the address of your google calendar? (' + self.get_config['calendar'].to_s + '). Optional!'
     calendar = STDIN.gets.chomp
     config['calendar'] = calendar if ! calendar.to_s.empty?
     device = 'x'
@@ -74,6 +74,9 @@ class LightWaveRF
       puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Enter a blank line to finish.'
       if device = STDIN.gets.chomp
         parts = device.split ' '
+        parts.map! do | device |
+          { 'name' => device }
+        end
         if !parts[0].to_s.empty? and !parts[1].to_s.empty?
           new_room = parts.shift
           config['room'] ||= [ ]
@@ -167,10 +170,12 @@ class LightWaveRF
     end
   end
 
+  # Write the config file
   def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
     File.open( self.get_config_file, 'w' ) do | handle |
       handle.write YAML.dump( config )
     end
+    self.get_config_file
   end
 
   # Get the config file, create it if it does not exist
