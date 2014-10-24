@@ -63,10 +63,10 @@ class LightWaveRF
   #   debug: (Boolean)
   def configure debug = false
     config = self.get_config
-    puts 'What is the ip address of your wifi link? (' + self.get_config['host'].to_s + '). Enter a blank line to broadcast UDP commands.'
+    puts 'What is the ip address of your wifi link? (currently "' + self.get_config['host'].to_s + '"). Enter a blank line to broadcast UDP commands (ok to just hit enter here).'
     host = STDIN.gets.chomp
     config['host'] = host if ! host.to_s.empty?
-    puts 'What is the address of your google calendar? (' + self.get_config['calendar'].to_s + '). Optional!'
+    puts 'What is the address of your google calendar? (currently "' + self.get_config['calendar'].to_s + '"). Optional (ok to just hit enter here).'
     calendar = STDIN.gets.chomp
     config['calendar'] = calendar if ! calendar.to_s.empty?
     device = 'x'
@@ -74,15 +74,15 @@ class LightWaveRF
       puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Enter a blank line to finish.'
       if device = STDIN.gets.chomp
         parts = device.split ' '
-        parts.map! do | device |
-          { 'name' => device }
-        end
         if !parts[0].to_s.empty? and !parts[1].to_s.empty?
           new_room = parts.shift
           config['room'] ||= [ ]
           found = false
           config['room'].each do | room |
             if room['name'] == new_room
+              parts.map! do | device |
+                { 'name' => device, 'type' => 'O' }
+              end
               room['device'] = parts
               found = true
             end
@@ -91,12 +91,13 @@ class LightWaveRF
           if ! found
             config['room'].push 'name' => new_room, 'device' => parts, 'mood' => nil
           end
-          debug and ( p 'added ' + parts.to_s + ' to ' + new_room )
+          debug and ( p 'added ' + parts.to_s + ' to ' + new_room.to_s )
         end
       end
     end
     debug and ( p 'end of configure, config is now ' + config.to_s )
-    self.put_config config
+    file = self.put_config config
+    'Saved config file ' + file
   end
 
   # Config file setter
@@ -171,7 +172,7 @@ class LightWaveRF
   end
 
   # Write the config file
-  def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light', 'lights' ] } ] }
+  def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light' => { 'name' => 'light' }, 'lights' => { 'name' => 'lights' } ] } ] }
     File.open( self.get_config_file, 'w' ) do | handle |
       handle.write YAML.dump( config )
     end

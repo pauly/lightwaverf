@@ -11,7 +11,7 @@ case ARGV[0]
   when 'timezone'
     puts obj.timezone ARGV[1]
   when 'configure'
-    puts obj.configure
+    puts obj.configure ARGV[1]
   when 'sequence'
     puts obj.sequence ARGV[1], ARGV[2]
   when 'mood'
