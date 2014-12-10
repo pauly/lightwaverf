@@ -48,12 +48,16 @@ and that will create something like the following.
     room: 
     - name: our
       device: 
-      - light
-      - lights
+      - name: light
+        type: D
+      - name: lights
+        type: D
     - name: dining
       device:
-      - light
-      - lights
+      - name: light
+        type: D
+      - name: lights
+        type: D
 
 That needs to be valid yml so the spacing etc is important.
 
@@ -68,17 +72,22 @@ The first time you try to pair a device from the computer look out for the "pair
 Note that if you are already using the iPhone/other app, then your device pairings may already be done. The wifilink is a single transmitter from the actual device's perspective - all clients (so your iPhone and PC running this ruby program) are the same thing.
 
 ## How to install on your raspberry pi
-    sudo apt-get update
-    sudo apt-get upgrade
     sudo apt-get install ruby git-core gem
-    git clone git://github.com/pauly/lightwaverf.git # you don't need much from here, but have the whole source anyway
+    git clone git://github.com/pauly/lightwaverf.git
     cd lightwaverf && crontab cron.tab # set up the timer and energy monitor
     sudo gem install lightwaverf # or build the gem locally, see below
     lightwaverf configure # or lightwaverf update
+    lightwaverf initlink true
     lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
 ## How to build the gem from the source
+    sudo apt-get install ruby git-core gem
+    git clone git://github.com/pauly/lightwaverf.git
+    cd lightwaverf 
+    git submodule update --init
+    crontab cron.tab # set up the timer and energy monitor
     gem build lightwaverf.gemspec && sudo gem install ./lightwaverf-0.5.0.gem # or whatever the latest version is
+    lightwaverf initlink true
 
 ## Where did the website in this repo go?
 
@@ -95,7 +104,7 @@ Set up the crontab to rebuild the web page regularly
     # rebuild the website every hour, on the hour
     0 * * * * /usr/local/bin/lightwaverf web 5 > /var/www/lightwaverf.html
 
-Todo: make that web page configurable. Any suggestions? If you don't have the energy monitor there is not much on that web page for you right now.
+If you don't have the energy monitor there is not much on that web page for you right now.
 
 # Usage
 
@@ -125,7 +134,21 @@ Tip: I have found that you can actually pair a single device to 2 different devi
     
 This means that you can set up a 'device' in slot D4 which will actually control all the devices at once. Just remember not to to call it 'all' as this is used as a keyword in the code to do the same thing in a different way as per the above.
 
-## Mood support
+# Automated timers (via Google Calendar)
+
+This functionality allows you to create simple or complex schedules to automatically control all your devices (and set moods, run sequences) by simply creating a Google Calendar (gcal) and adding entries to it for the actions you wish to take. You have all the power of gcal's recurrence capabilities to set repeating events.
+
+## How to set up the google calendar timers
+
+  * make yourself a google calendar http://www.google.com/calendar
+    * click on "my calendars"
+    * click on "create a new calendar"
+    * add some events called "lounge light"
+    * get the private address address of your calendar by going to calendar settings and clicking on the XML button at the bottom for the private address
+    * put this private address of the calendar into the lightwaverf-config.yml file
+    * setup crontab (see below)    
+
+# Mood support
 
 Moods are now supported if they are added to the lightwaverf-config.yml file as follows:
 
@@ -161,7 +184,7 @@ And moods are supported in google calendar timers by creating an event with the 
 
 Note that this will set the mood active at the start time of the event and will not "undo" anything at the end of the event. A separate event should be created to set another mood at another time
 
-## Sequence support
+# Sequence support
 
 Sequences can execute a number of tasks in order, either simple device commands or setting moods, as per the following example:
 
@@ -177,20 +200,6 @@ Note that pauses can be added (in seconds)
       - - living
         - all
         - off
-
-# Automated timers (via Google Calendar)
-
-This functionality allows you to create simple or complex schedules to automatically control all your devices (and set moods, run sequences) by simply creating a Google Calendar (gcal) and adding entries to it for the actions you wish to take. You have all the power of gcal's recurrence capabilities to set repeating events.
-
-## How to set up the google calendar timers
-
-  * make yourself a google calendar http://www.google.com/calendar
-    * click on "my calendars"
-    * click on "create a new calendar"
-    * add some events called "lounge light"
-    * get the private address address of your calendar by going to calendar settings and clicking on the XML button at the bottom for the private address
-    * put this private address of the calendar into the lightwaverf-config.yml file
-    * setup crontab (see below)    
 
 ## Crontab setup
 
@@ -305,7 +314,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
-  * v 0.7   log to spreadsheet, fixes for broken firmware
+  * v 0.7   log to spreadsheet, fixed + smoothed graphs, embiggened config file
   * v 0.6.4 stop "update" corrupting config
   * v 0.6.3 fix corrupted devices in config
   * v 0.6.2 another timezone fix

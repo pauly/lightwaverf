@@ -1,46 +1,55 @@
---- 
-sequence: 
-  lights: 
-  - - our
-    - light
-    - "on"
-  - - our
-    - lights
-    - "on"
-room: 
+---
+sequence:
+  bedtime:
+  - - lounge
+    - all
+    - 'off'
+  - - dining
+    - all
+    - 'off'
+  - - kitchen
+    - all
+    - 'off'
+room:
 - name: our
-  device: 
-  - light
-  - lights
-  - kettle
-  - tv
+  device:
+  - name: light
+    type: D
+  - name: lights
+    type: D
+  - name: kettle
+    type: O
+  - name: tv
+    type: O
 - name: dining
   device:
-  - light
-  - lights
-- name: harry
-  device:
-  - light
-- name: tommy
-  device:
-  - light
+  - name: light
+    type: D
+  - name: lights
+    type: D
 - name: lounge
   device:
-  - light
-  - lights
+  - name: light
+    type: D
+  - name: lights
+    type: D
+  - name: tv
+    type: O
+  - name: lamp1
+    type: O
+  - name: lamp2
+    type: O
+  - name: surround
+    type: O
 - name: kitchen
   device:
-  - kettle
-  - toaster
-  - radio
-  - socket
-- name: cloakroom
-  device:
-  - light
-- name: hall
-  device:
-  - light
-- name: landing
-  device:
-  - light
+  - name: kettle
+    type: O
+  - name: toaster
+    type: O
+  - name: radio
+    type: O
+  - name: socket
+    type: O
 calendar: 'https://www.google.com/calendar/feeds/aar79qh62fej54nprq6334s7ck%40group.calendar.google.com/public/basic'
+host: 192.168.1.64

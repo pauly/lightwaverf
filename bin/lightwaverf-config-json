@@ -1,4 +1,6 @@
 #!/usr/bin/ruby
 require 'lightwaverf'
+config = LightWaveRF.new.get_config
+config['spreadsheet']['password'] = nil
+puts JSON.generate config
 require 'json'
-puts JSON.generate LightWaveRF.new.get_config
