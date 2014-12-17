@@ -18,48 +18,15 @@ No need to do anything with this repo unless you are particularly interested.
 
 This code is unofficial and unaffiliated with http://www.lightwaverf.com, please let me know how you get on http://www.clarkeology.com/wiki/lightwaverf / @pauly
 
-## Problems installing?
-
-If you get an error along the lines of
-
-    /usr/bin/ruby1.9.1 extconf.rb
-    /usr/lib/ruby/1.9.1/rubygems/custom_require.rb:36:in `require’: cannot load such file — mkmf (LoadError)
-    from /usr/lib/ruby/1.9.1/rubygems/custom_require.rb:36:in `require’
-    from extconf.rb:1:in `’
-
-try
-
-    sudo apt-get install ruby1.9.1-dev
-
-I think this is down to the json library I am using, but haven't tracked it down yet. If you can help, please pull request!
-
 ## Setup config
 
-You need a yml config file in your home directory, to build one, if you have already uploaded your data to the LightwaveRF server, download this data by typing
-
-    lightwaverf update email@example.com 1234
-
-Otherwise, manually specify rooms and devices by typing
+You need a config file in your home directory, to build one
 
     lightwaverf configure
 
-and that will create something like the following.
+Or if you have already uploaded your data to the LightwaveRF server, download this data by typing
 
-    room: 
-    - name: our
-      device: 
-      - name: light
-        type: D
-      - name: lights
-        type: D
-    - name: dining
-      device:
-      - name: light
-        type: D
-      - name: lights
-        type: D
-
-That needs to be valid yml so the spacing etc is important.
+    lightwaverf update 
 
 ## Device pairing
 
@@ -84,7 +51,9 @@ Note that if you are already using the iPhone/other app, then your device pairin
     cd lightwaverf 
     git submodule update --init
     gem build lightwaverf.gemspec && sudo gem install ./lightwaverf-*.gem
+    lightwaverf configure
     lightwaverf firmware
+    lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
 ## Where did the website in this repo go?
 
@@ -110,7 +79,7 @@ You can set the state of any device with commands such as the following:
     
 You can also set the state for all devices in a room (based on you configuration file):
 
-    lightwaverf lounge all full (set all configured devices to full)
+    lightwaverf lounge all on # (turn all configured devices on)
     
 Note that this sets the state on each device configured in that room by looping through the configuration. There will be a short pause between each device being set to ensure that all the commands are successful.
 
@@ -190,7 +159,7 @@ Note that pauses can be added (in seconds)
 
 ## Crontab setup
 
-    `lightwaverf configure`
+    lightwaverf configure
 
 ## Timer usage
 
@@ -267,6 +236,21 @@ Here are some ideas on things to automate with the timers:
 * Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
 * Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
 * Improvement: Possibly add some info about which states are currently applicable to the timer log
+
+## Problems installing?
+
+If you get an error along the lines of
+
+    /usr/bin/ruby1.9.1 extconf.rb
+    /usr/lib/ruby/1.9.1/rubygems/custom_require.rb:36:in `require’: cannot load such file — mkmf (LoadError)
+    from /usr/lib/ruby/1.9.1/rubygems/custom_require.rb:36:in `require’
+    from extconf.rb:1:in `’
+
+try
+
+    sudo apt-get install ruby1.9.1-dev
+
+I think this is down to the json library I am using, but haven't tracked it down yet. If you can help, please pull request!
 
 # History
 
