@@ -4,7 +4,6 @@
 # Get rid of references in yaml cache file - use dup more? Or does it not matter?
 # Cope with events that start and end in the same run?
 # Add info about states to timer log
-# Build / update cron job automatically
 
 require 'yaml'
 require 'socket'
@@ -27,7 +26,6 @@ class LightWaveRF
   @timers = nil
   @time = nil
 
-  # Display usage info
   def usage room = nil
     rooms = self.class.get_rooms self.get_config
     config = 'usage: lightwaverf ' + rooms.values.first['name'].to_s + ' ' + rooms.values.first['device'].keys.first.to_s + ' on'
@@ -50,10 +48,10 @@ class LightWaveRF
   # Display help
   def help
     help = self.usage + "\n"
-    help += "your rooms, devices, and sequences, as defined in " + self.get_config_file + ":\n\n"
+    help += "your rooms, and devices, as defined in " + self.get_config_file + ":\n\n"
     help += YAML.dump self.get_config['room']
     room = self.get_config['room'].last['name'].to_s
-    device = self.get_config['room'].last['device'].last.to_s
+    device = self.get_config['room'].last['device'].last['name'].to_s
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
@@ -63,15 +61,73 @@ class LightWaveRF
   #   debug: (Boolean)
   def configure debug = false
     config = self.get_config
-    puts 'What is the ip address of your wifi link? (currently "' + self.get_config['host'].to_s + '"). Enter a blank line to broadcast UDP commands (ok to just hit enter here).'
-    host = STDIN.gets.chomp
-    config['host'] = host if ! host.to_s.empty?
-    puts 'What is the address of your google calendar? (currently "' + self.get_config['calendar'].to_s + '"). Optional (ok to just hit enter here).'
+    puts 'What is the ip address of your wifi link? (currently "' + self.get_config['host'].to_s + '")'
+    puts 'Enter a blank line to broadcast UDP commands' if debug
+    puts '(ok to just hit enter here)'
+    host = STDIN.gets.chomp.to_s
+    config['host'] = host if ! host.empty?
+
+    puts 'What is the address of your google calendar? (currently "' + self.get_config['calendar'].to_s + '")'
+    puts '(ok to just hit enter here)'
     calendar = STDIN.gets.chomp
     config['calendar'] = calendar if ! calendar.to_s.empty?
+
+    puts 'Do you have an energy monitor? [Y/n]'
+    puts '(ok to just hit enter here)'
+    monitor = STDIN.gets.chomp.to_s
+    if ! monitor.empty?
+      puts 'got "' + monitor + '"' if debug
+      config['monitor'] = true if monitor.byteslice( 0 ).downcase == 'y'
+      puts 'made that into "' + config['monitor'].to_s + '"' if debug
+    end
+
+    puts 'Shall we create a web page on this server? (currently "' + self.get_config['web'].to_s + '"). Optional (ok to just hit enter here)'
+    web = STDIN.gets.chomp.to_s
+    puts 'got "' + web + '"' if debug
+    config['web'] = web if ! web.empty?
+    config['web'] = '/tmp/lightwaverf_web.html' if config['web'].to_s.empty?
+    puts 'going with "' + config['web'].to_s + '"' if debug
+
+    if config['calendar'] || config['monitor'] || config['web']
+      puts 'setting up crontab...' if debug
+      crontab = `crontab -l`.split( /\n/ ) || [ ]
+      crontab = crontab.reject do | line |
+        line =~ /lightwaverf (timer|update_timers|configure|energy|summarise|web)/
+      end
+      executable = `which lightwaverf`.chomp
+      crontab << '# new crontab added by `' + executable + ' configure`'
+
+      if config['monitor']
+        crontab << '# lightwaverf energy monitor check ever 2 mins + summarise every 5'
+        crontab << '*/2 * * * * ' + executable + ' energy > /tmp/lightwaverf_energy.out 2>&1'
+        crontab << '*/5 * * * * ' + executable + ' summarise 7 true > /tmp/lightwaverf_summarise.out 2>&1'
+      end
+
+      if config['web']
+        crontab << '# lightwaverf web page generated every hour'
+        crontab << '45 * * * * ' + executable + ' web > ' + config['web'] + ' 2> /tmp/lightwaverf_web.out'
+      end
+
+      if config['calendar']
+        crontab << '# lightwaverf update_timers 1 hour ahead 24 hours back'
+        crontab << '58 * * * * ' + executable + ' update_timers 60 1440 true > /tmp/lightwaverf_update_timers.out 2>&1'
+        crontab << '# lightwaverf timer every 5 mins off peak'
+        crontab << '*/5 0-6,9-16,23 * * * ' + executable + ' timer 5 true > /tmp/lightwaverf_timer.out 2>&1'
+        crontab << '# lightwaverf timer every minute peak'
+        crontab << '* 7,8,17-22 * * * ' + executable + ' timer 1 true > /tmp/lightwaverf_timer.out 2>&1'
+      end
+
+      File.open( '/tmp/cron.tab', 'w' ) do | handle |
+        handle.write crontab.join( "\n" ) + "\n"
+      end
+      puts `crontab /tmp/cron.tab`
+      puts 'crontab is now' if debug
+      puts `crontab -l` if debug
+    end
     device = 'x'
     while ! device.to_s.empty?
       puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Enter a blank line to finish.'
+      puts 'If you already have rooms and devices set up on another lightwaverf app then hit enter here, and "lightwaverf update" first.'
       if device = STDIN.gets.chomp
         parts = device.split ' '
         if !parts[0].to_s.empty? and !parts[1].to_s.empty?
@@ -100,32 +156,26 @@ class LightWaveRF
     'Saved config file ' + file
   end
 
-  # Config file setter
   def set_config_file file
     @config_file = file
   end
 
-  # Config file getter
   def get_config_file
     @config_file || File.expand_path('~') + '/lightwaverf-config.yml'
   end
 
-  # Log file getter
   def get_log_file
     @log_file || File.expand_path('~') + '/lightwaverf.log'
   end
 
-  # Summary file getter
   def get_summary_file
     @summary_file || File.expand_path('~') + '/lightwaverf-summary.json'
   end
 
-  # Timer log file getter
   def get_timer_log_file
     @timer_log_file || File.expand_path('~') + '/lightwaverf-timer.log'
   end
 
-  # Timer logger
   def log_timer_event type, room = nil, device = nil, state = nil, result = false
     # create log message
     message = nil
@@ -172,7 +222,7 @@ class LightWaveRF
   end
 
   # Write the config file
-  def put_config config = { 'room' => [ { 'name' => 'our', 'device' => [ 'light' => { 'name' => 'light' }, 'lights' => { 'name' => 'lights' } ] } ] }
+  def put_config config = { 'room' => [ { 'name' => 'default-room', 'device' => [ 'light' => { 'name' => 'default-device' } ] } ] }
     File.open( self.get_config_file, 'w' ) do | handle |
       handle.write YAML.dump( config )
     end
@@ -187,16 +237,6 @@ class LightWaveRF
         self.put_config
       end
       @config = YAML.load_file self.get_config_file
-      # fix where update made names and devices into arrays
-      # if @config['room']
-      #   @config['room'].map! do | room |
-      #     room['name'] = room['name'].kind_of?( Array ) ? room['name'][0] : room['name']
-      #     room['device'].map! do | device |
-      #       device = device.kind_of?( Array ) ? device[0] : device
-      #     end
-      #     room
-      #   end
-      # end
     end
     @config
   end
@@ -214,6 +254,12 @@ class LightWaveRF
   # Credits:
   #   wonko - http://lightwaverfcommunity.org.uk/forums/topic/querying-configuration-information-from-the-lightwaverf-website/
   def update_config email = nil, pin = nil, debug = false
+
+    if ! email && ! pin
+      STDERR.puts 'missing email and / or pin'
+      STDERR.puts 'usage: lightwaverf update email@email.com 1111'
+      return
+    end
 
     # Login to LightWaveRF Host server
     uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'

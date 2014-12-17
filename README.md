@@ -72,12 +72,10 @@ The first time you try to pair a device from the computer look out for the "pair
 Note that if you are already using the iPhone/other app, then your device pairings may already be done. The wifilink is a single transmitter from the actual device's perspective - all clients (so your iPhone and PC running this ruby program) are the same thing.
 
 ## How to install on your raspberry pi
-    sudo apt-get install ruby git-core gem
-    git clone git://github.com/pauly/lightwaverf.git
-    cd lightwaverf && crontab cron.tab # set up the timer and energy monitor
+    sudo apt-get install ruby gem
     sudo gem install lightwaverf # or build the gem locally, see below
-    lightwaverf configure # or lightwaverf update
-    lightwaverf initlink true
+    lightwaverf configure
+    lightwaverf firmware # possibly not required, but harmless
     lightwaverf dining lights on # pair one of your devices like you would with any remote control
 
 ## How to build the gem from the source
@@ -85,26 +83,16 @@ Note that if you are already using the iPhone/other app, then your device pairin
     git clone git://github.com/pauly/lightwaverf.git
     cd lightwaverf 
     git submodule update --init
-    crontab cron.tab # set up the timer and energy monitor
-    gem build lightwaverf.gemspec && sudo gem install ./lightwaverf-0.5.0.gem # or whatever the latest version is
-    lightwaverf initlink true
+    gem build lightwaverf.gemspec && sudo gem install ./lightwaverf-*.gem
+    lightwaverf firmware
 
 ## Where did the website in this repo go?
 
-It is now a submodule in the app folder, though I'm not supporting it right. Instead build a simple one pager with:
+It is now a submodule in the app folder, though I'm not supporting it... build a simple one pager with
 
-    lightwaverf summarise && lightwaverf web > /var/www/lightwaverf.html
+    lightwaverf configure
 
-That presumes you already have a web server running and the document root is /var/www
 Here is some sample output: http://pauly.github.io/lightwaverf/
-
-Set up the crontab to rebuild the web page regularly
-
-    # crontab -e
-    # rebuild the website every hour, on the hour
-    0 * * * * /usr/local/bin/lightwaverf web 5 > /var/www/lightwaverf.html
-
-If you don't have the energy monitor there is not much on that web page for you right now.
 
 # Usage
 
@@ -145,8 +133,7 @@ This functionality allows you to create simple or complex schedules to automatic
     * click on "create a new calendar"
     * add some events called "lounge light"
     * get the private address address of your calendar by going to calendar settings and clicking on the XML button at the bottom for the private address
-    * put this private address of the calendar into the lightwaverf-config.yml file
-    * setup crontab (see below)    
+    * `lightwaverf configure`
 
 # Mood support
 
@@ -203,36 +190,7 @@ Note that pauses can be added (in seconds)
 
 ## Crontab setup
 
-The timer function utilises 2 separate functions that need scheduling with cron independently:
-
-1) Update Timers - this retrieves the gcal entries for configurable period of time in the future (also a bit in the past, see below), parses them and builds/stores a (yaml) cache file of the events to be considered for exceution. The cache file is lightwave-timer-cache.yml
-2) Run Timers - this processes the cache file to actually issue commands via the wifilink
-
-These processes can be scheduled in cron at different rates. It is unlikely that you will need to run the update timers function very often (unless you want to add new entries in the very near future), but the run timers function should be scheduled fairly frequently to make sure that devices are set near to the requested time. I run the update process every 2 hours, and the run process every 5 minutes as follows:
-
-    59 */2 * * * /usr/local/bin/lightwaverf update_timers > /tmp/timer.out
-    */5 * * * * /usr/local/bin/lightwaverf run_timers 5 > /tmp/timer.out
-
-Note that following options can be provided to the update_timers function:
-    
-    lightwaverf update_timers 60 1440 true
-    
-where:
-
-* 60 is the amount of minutes in the past for which to cache entries (see below for why this is useful)
-* 1440 is the amount of minutes in the future to cache entries (essentially define how long you can 'survive' without connectivity to gcal)
-* true sets debug mode on if needed
-
-Note that following options must/can be provided to the run_timers function:
-    
-    lightwaverf run_timers 5 true
-    
-where:
-
-* 5 is the number of minutes that the cron job is scheduled for. This MUST be provided and must match with the cron expression as the process calculates a window from 'now' for the next X minutes in which any qualifying events will be executed. If this is different to the cron schedule, you will either miss or duplicate events!
-* true sets debug mode on if needed
-
-Both functions will log their key activities to lightwaverf-timer.log, so you can check that everything is running ok, and review which devices, moods and sequences were triggered at what times. In the crontab example above, the more detailed logging of either function is sent to /tmp/timer.out from where you can see exactly what happened - switch debug on for more logging.
+    `lightwaverf configure`
 
 ## Timer usage
 
@@ -288,8 +246,6 @@ You can also adjust the run time of the event by a random number of minutes as f
 
     lounge light random 60 - this will adjust the start/end times of the event randomly within the 60 minutes around the actual gcal entry time (ie plus or minus 30 minutes)
 
-Also note that you can only modify the time within the caching time you setup in the cron job for update timers. i.e. you cannot modify an event ahead by 2 hours but only cache historically by 1 hour, as the event will have been purged from the cache by the time you want it run. You will have to configure the caching period on the update timers function to be at least as 'wide' as the biggest time modifier you are using.
-
 ## Sunset/sunrise
 
 In order to trigger events based on local sunset/sunrise, you can play a neat trick with the "if this then that" service (www.ifttt.com). Essentially, you can set up a daily job that will automatically create a gcal entry at the start of each day where the start time is the local sunset or sunrise. I use this to create and entry daily which runs a certain sequence. See this IFTTT recipe as an example: https://ifttt.com/recipes/96584
@@ -314,6 +270,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.8   simplified setup of timers, all in `lightwaverf configure` now
   * v 0.7   log to spreadsheet, fixed + smoothed graphs, embiggened config file
   * v 0.6.4 stop "update" corrupting config
   * v 0.6.3 fix corrupted devices in config
