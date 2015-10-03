@@ -4,7 +4,6 @@
 # Get rid of references in yaml cache file - use dup more? Or does it not matter?
 # Cope with events that start and end in the same run?
 # Add info about states to timer log
-# Build / update cron job automatically
 
 require 'yaml'
 require 'socket'
@@ -12,9 +11,9 @@ require 'net/http'
 require 'uri'
 require 'net/https'
 require 'json'
-require 'rexml/document'
 require 'time'
 require 'date'
+require 'ri_cal'
 include Socket::Constants
 
 class LightWaveRF
@@ -66,7 +65,7 @@ class LightWaveRF
     puts 'What is the ip address of your wifi link? (currently "' + self.get_config['host'].to_s + '"). Enter a blank line to broadcast UDP commands (ok to just hit enter here).'
     host = STDIN.gets.chomp
     config['host'] = host if ! host.to_s.empty?
-    puts 'What is the address of your google calendar? (currently "' + self.get_config['calendar'].to_s + '"). Optional (ok to just hit enter here).'
+    puts 'What is the address of your calendar ics file? (currently "' + self.get_config['calendar'].to_s + '"). Optional (ok to just hit enter here).'
     calendar = STDIN.gets.chomp
     config['calendar'] = calendar if ! calendar.to_s.empty?
     device = 'x'
@@ -97,6 +96,46 @@ class LightWaveRF
     end
     debug and ( p 'end of configure, config is now ' + config.to_s )
     file = self.put_config config
+
+    executable = `which lightwaverf`.chomp
+    crontab = `crontab -l`.split( /\n/ ) || [ ]
+    crontab = crontab.reject do | line |
+      line =~ Regexp.new( Regexp.escape executable )
+    end
+
+    crontab << '# new crontab added by ' + executable
+    if config['monitor']
+      crontab << '# lightwaverf energy monitor check ever 2 mins + summarise every 5'
+      crontab << '*/2 * * * * ' + executable + ' energy > /tmp/lightwaverf_energy.out 2>&1'
+      crontab << '*/5 * * * * ' + executable + ' summarise 7 true > /tmp/lightwaverf_summarise.out 2>&1'
+    end
+    if config['web']
+      crontab << '# lightwaverf web page generated every hour'
+      crontab << '45 * * * * ' + executable + ' web > ' + config['web'] + ' 2> /tmp/lightwaverf_web.out'
+    end
+    crontab << '# lightwaverf update_timers 1 hour back 4 hours ahead'
+    crontab << '58 * * * * ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
+    crontab << '# lightwaverf update_timers on reboot (works for me on raspbian)'
+    crontab << '@reboot ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
+    crontab << '# lightwaverf timer every 10 mins off peak'
+    crontab << '*/10 0-6,9-16,23 * * * ' + executable + ' timer 10 true >> /tmp/lightwaverf_timer.out 2>&1'
+    crontab << '# lightwaverf timer every 2 minutes peak'
+    crontab << '*/2 7,8,17-22 * * * ' + executable + ' timer 2 >> /tmp/lightwaverf_timer.out 2>&1'
+    config['room'].each do | room |
+      next unless room['device']
+      room['device'].each do | device |
+        next unless device['reboot']
+        out_file = '/tmp/' + room['name'] + device['name'] + '.reboot.out'
+        out_file.gsub! /\s/, ''
+        crontab << '@reboot ' + executable + ' ' + room['name'] + ' ' + device['name'] + ' ' + device['reboot'] + ' > ' + out_file + ' 2>&1'
+      end
+    end
+
+    File.open( '/tmp/cron.tab', 'w' ) do | handle |
+      handle.write crontab.join( "\n" ) + "\n"
+    end
+    puts `crontab /tmp/cron.tab`
+
     'Saved config file ' + file
   end
 
@@ -216,7 +255,7 @@ class LightWaveRF
   def update_config email = nil, pin = nil, debug = false
 
     # Login to LightWaveRF Host server
-    uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'
+    uri = URI.parse 'https://www.lightwaverfhost.co.uk/manager/index.php'
     http = Net::HTTP.new uri.host, uri.port
     http.use_ssl = true if uri.scheme == 'https'
     data = 'pin=' + pin + '&email=' + email
@@ -651,18 +690,13 @@ class LightWaveRF
     response
   end
 
-  def update_timers past = 60, future = 1440, debug = false
-    p '----------------'
-    p 'Updating timers...'
-
-    # determine the window to query
-    now = Time.new
-    query_start = now - self.class.to_seconds( past )
-    query_end = now + self.class.to_seconds( future )
-
-    # url = LightWaveRF.new.get_config['calendar']
+  def get_calendar_url debug = false
     url = self.get_config['calendar']
-
+    if ! /\.ics/.match url
+      STDERR.puts 'we need ical .ics format now, so using default ' + url + ' for dev'
+      STDERR.puts 'This contains my test events, not yours! Add your ical url to your config file'
+      url = 'https://www.google.com/calendar/ical/aar79qh62fej54nprq6334s7ck%40group.calendar.google.com/public/basic.ics'
+    end
     ctz = 'UTC'
     case Time.new.zone
     when 'BST'
@@ -674,11 +708,10 @@ class LightWaveRF
     if ctz != 'UTC'
       p 'using time zone is ' + ctz + ' so look out...'
     end
+    url
+  end
 
-    url += '&singleevents=true'
-    url += '&start-min=' + query_start.strftime( '%FT%T%:z' ).sub( '+', '%2B' )
-    url += '&start-max=' + query_end.strftime( '%FT%T%:z' ).sub( '+', '%2B' )
-    debug and ( p url )
+  def request url
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
     begin
@@ -692,212 +725,165 @@ class LightWaveRF
     end
     request = Net::HTTP::Get.new parsed_url.request_uri
     response = http.request request
+  end
 
-    # if we get a good response
-    debug and ( p "Response code is: " + response.code)
-    if response.code == '200'
-      debug and ( p "Retrieved calendar ok")
-      doc = REXML::Document.new response.body
-      now = Time.now.strftime '%H:%M'
-
-      events = [ ]
-      states = [ ]
-
-      # refresh the list of entries for the caching period
-      doc.elements.each 'feed/entry' do | e |
-        debug and ( p '-------------------' )
-        debug and ( p 'Processing entry...' )
-        event = Hash.new
-
-        # tokenise the title
-        debug and ( p 'Event title is: ' + e.elements['title'].text )
-        command = e.elements['title'].text.split
-        command_length = command.length
-        debug and ( p 'Number of words is: ' + command_length.to_s )
-        if command and command.length >= 1
-          first_word = command[0].to_s
-          # determine the type of the entry
-          if first_word[0,1] == '#'
-            debug and ( p 'Type is: state' )
-            event['type'] = 'state' # temporary type, will be overridden later
-            event['room'] = nil
-            event['device'] = nil
-            event['state'] = first_word[1..-1].to_s
-            modifier_start = command_length # can't have modifiers on states
+  def set_event_type event, debug = false
+    if event['command'].first[0,1] == '#'
+      event['type'] = 'state' # temporary type, will be overridden later
+      event['room'] = nil
+      event['device'] = nil
+      event['state'] = event['command'].first[1..-1].to_s
+      event['modifier_start'] = event['command'].length # can't have modifiers on states
+    else
+      case event['command'].first.to_s
+      when 'mood'
+        event['type'] = 'mood'
+        event['room'] = event['command'][1].to_s
+        event['device'] = nil
+        event['state'] = event['command'][2].to_s
+        event['modifier_start'] = 3
+      when 'sequence'
+        event['type'] = 'sequence'
+        event['room'] = nil
+        event['device'] = nil
+        event['state'] = event['command'][1].to_s
+        event['modifier_start'] = 2
+      else
+        event['type'] = 'device'
+        event['room'] = event['command'].first.to_s
+        event['device'] = event['command'][1].to_s
+        # handle optional state
+        if event['command'].length > 2
+          first_char = event['command'][2].to_s[0,1]
+          debug and ( p 'First char is: ' + first_char )
+          # if the third word does not start with a modifier flag, assume it's a state
+          if /\w/.match first_char
+            event['state'] = event['command'][2].to_s
+            event['modifier_start'] = 3
           else
-            case first_word
-            when 'mood'
-              debug and ( p 'Type is: mood' )
-              event['type'] = 'mood'
-              event['room'] = command[1].to_s
-              event['device'] = nil
-              event['state'] = command[2].to_s
-              modifier_start = 3
-            when 'sequence'
-              debug and ( p 'Type is: sequence' )
-              event['type'] = 'sequence'
-              event['room'] = nil
-              event['device'] = nil
-              event['state'] = command[1].to_s
-              modifier_start = 2
-            else
-              debug and ( p 'Type is: device' )
-              event['type'] = 'device'
-              event['room'] = command[0].to_s
-              event['device'] = command[1].to_s
-              # handle optional state
-              if command_length > 2
-                third_word = command[2].to_s
-                first_char = third_word[0,1]
-                debug and ( p 'First char is: ' + first_char )
-                # if the third word does not start with a modifier flag, assume it's a state
-                # if first_char != '@' and first_char != '!' and first_char != '+' and first_char != '-'
-                if /\w/.match first_char
-                  debug and ( p 'State has been given.')
-                  event['state'] = command[2].to_s
-                  modifier_start = 3
-                else
-                  debug and ( p 'State has not been given.' )
-                  modifier_start = 2
-                end
-              else
-                debug and ( p 'State has not been given.' )
-                event['state'] = nil
-                modifier_start = 2
-              end
-            end
+            event['modifier_start'] = 2
           end
-
-          # get modifiers if they exist
-          time_modifier = 0
-          if command_length > modifier_start
-            debug and ( p 'May have modifiers...' )
-            when_modifiers = [ ]
-            unless_modifiers = [ ]
-            modifier_count = command_length - modifier_start
-            debug and ( p 'Count of modifiers is ' + modifier_count.to_s )
-            for i in modifier_start..(command_length-1)
-              modifier = command[i]
-              if modifier[0,1] == '@'
-                debug and ( p 'Found when modifier: ' + modifier[1..-1] )
-                when_modifiers.push modifier[1..-1]
-              elsif modifier[0,1] == '!'
-                debug and ( p 'Found unless modifier: ' + modifier[1..-1] )
-                unless_modifiers.push modifier[1..-1]
-              elsif modifier[0,1] == '+'
-                debug and ( p 'Found positive time modifier: ' + modifier[1..-1] )
-                time_modifier = modifier[1..-1].to_i
-              elsif modifier[0,1] == '-'
-                debug and ( p 'Found negative time modifier: ' + modifier[1..-1] )
-                time_modifier = modifier[1..-1].to_i * -1
-              end
-            end
-            # add when/unless modifiers to the event
-            event['when_modifiers'] = when_modifiers
-            event['unless_modifiers'] = unless_modifiers
-          end
-
-          # parse the date string
-          event_time = /When: ([\w ]+) (\d\d:\d\d) to ([\w ]+)?(\d\d:\d\d)&nbsp;\n(.*)<br>(.*)/.match e.elements['summary'].text
-          debug and ( p 'Event times are: ' + event_time.to_s )
-          start_date = event_time[1].to_s
-          start_time = event_time[2].to_s
-          end_date = event_time[3].to_s
-          end_time = event_time[4].to_s
-          timezone = event_time[5].to_s
-          if end_date == '' or end_date.nil? # copy start date to end date if it wasn't given (as the same date)
-            end_date = start_date
-          end
-
-          time_modifier += self.class.variance( e.elements['title'].text ).to_i
-          event['annotate'] = ! ( /do not annotate/.match e.elements['title'].text )
-
-          debug and ( p 'Start date: ' + start_date )
-          debug and ( p 'Start time: ' + start_time )
-          debug and ( p 'End date: ' + end_date )
-          debug and ( p 'End time: ' + end_time )
-          debug and ( p 'Timezone: ' + timezone )
-
-          # convert to datetimes
-          start_dt = DateTime.parse( start_date.strip + ' ' + start_time.strip + ' ' + timezone.strip )
-          end_dt = DateTime.parse( end_date.strip + ' ' + end_time.strip + ' ' + timezone.strip )
-
-          # apply time modifier if it exists
-          if time_modifier != 0
-            debug and ( p 'Adjusting timings by: ' + time_modifier.to_s )
-            start_dt = (( start_dt.to_time ) + time_modifier * 60 ).to_datetime
-            end_dt = (( end_dt.to_time ) + time_modifier * 60 ).to_datetime
-          end
-
-          debug and ( p 'Start datetime: ' + start_dt.to_s )
-          debug and ( p 'End datetime: ' + end_dt.to_s )
-
-          # populate the dates
-          event['date'] = start_dt
-          # handle device entries without explicit on/off state
-
-          # has a PROBLEM with a calendar event set to turn lights to 50% say - automatically adds an off!
-          # fix this with something like
-          #   if self.get_state event['state'] ! starts with F
-
-          if event['type'] == 'device' and ( event['state'].nil? or ( event['state'] != 'on' and event['state'] != 'off' ))
-            debug and ( p 'Duplicating event without explicit on/off state...' )
-            # if not state was given, assume we meant 'on'
-            if event['state'].nil?
-              event['state'] = 'on'
-            end
-            end_event = event.dup # duplicate event for start and end
-            end_event['date'] = end_dt
-            end_event['state'] = 'off'
-            events.push event
-            events.push end_event
-          # create state plus start and end events if a state
-          elsif event['type'] == 'state'
-            debug and ( p 'Processing state : ' + event['state'] )
-            # create state
-            state = Hash.new
-            state['name'] = event['state']
-            state['start'] = start_dt.dup
-            state['end'] = end_dt.dup
-            states.push state
-            # convert event to start and end sequence
-            event['type'] = 'sequence'
-            event['state'] = state['name'] + '_start'
-            end_event = event.dup # duplicate event for start and end
-            end_event['date'] = end_dt
-            end_event['state'] = state['name'] + '_end'
-            events.push event
-            events.push end_event
-          # else just add the event
-          else
-            events.push event
-          end
-
+        else
+          event['state'] = nil
+          event['modifier_start'] = 2
         end
+      end
+    end
+    event
+  end
 
+  def get_modifiers event, debug = false
+    event['time_modifier'] = 0
+    if event['command'].length > event['modifier_start']
+      event['when_modifiers'] = [ ]
+      event['unless_modifiers'] = [ ]
+      for i in event['modifier_start']..(event['command'].length-1)
+        modifier = event['command'][i]
+        if modifier[0,1] == '@'
+          debug and ( p 'Found when modifier: ' + modifier[1..-1] )
+          event['when_modifiers'].push modifier[1..-1]
+        elsif modifier[0,1] == '!'
+          debug and ( p 'Found unless modifier: ' + modifier[1..-1] )
+          event['unless_modifiers'].push modifier[1..-1]
+        elsif modifier[0,1] == '+'
+          debug and ( p 'Found positive time modifier: ' + modifier[1..-1] )
+          event['time_modifier'] = modifier[1..-1].to_i
+        elsif modifier[0,1] == '-'
+          debug and ( p 'Found negative time modifier: ' + modifier[1..-1] )
+          event['time_modifier'] = modifier[1..-1].to_i * -1
+        end
+      end
+    end
+    event['time_modifier'] += self.class.variance( event['summary'] ).to_i
+    if event['time_modifier'] != 0
+      debug and ( p 'Adjusting timings by: ' + event['time_modifier'].to_s )
+      event['date'] = (( event['date'].to_time ) + event['time_modifier'] * 60 ).to_datetime
+      event['end'] = (( event['end'].to_time ) + event['time_modifier'] * 60 ).to_datetime
+    end
+    event
+  end
+
+  def tokenise_event e, debug = false
+    event = { }
+    event['summary'] = e.summary
+    event['command'] = event['summary'].split
+    event['annotate'] = !( /do not annotate/.match event['summary'] )
+    event['date'] = e.dtstart
+    event['end'] = e.dtend
+    event = set_event_type event, debug
+  end
+
+  def update_timers past = 60, future = 1440, debug = false
+    p '-- Updating timers...'
+
+    query_start = Time.new - self.class.to_seconds( past )
+    query_end = Time.new + self.class.to_seconds( future )
+
+    url = self.get_calendar_url debug
+    debug and ( p url )
+    response = self.request url
+    if response.code != '200'
+      debug and ( p "Response code is: " + response.code)
+      return self.log_timer_event 'update', nil, nil, nil, false
+    end
+
+    cals = RiCal.parse_string( response.body )
+
+    timers = { }
+    timers['events'] = [ ]
+    timers['states'] = [ ]
+
+    cals.first.events.each do | e |
+      occurs = e.occurrences( :overlapping => [ query_start, query_end ] )
+      next if occurs.length == 0
+      occurs.each do | occurrence |
+
+        event = self.tokenise_event occurrence, debug
+        debug and ( p event.inspect )
+
+        event = self.get_modifiers event, debug
+        event.delete 'command'
+        event.delete 'modifier_start'
+        event.delete 'time_modifier'
+
+        # handle device entries without explicit on/off state
+        # has a PROBLEM with a calendar event set to turn lights to 50% say - automatically adds an off!
+        # fix this with something like
+        #   if self.get_state event['state'] ! starts with F
+
+        if event['type'] == 'device' and event['state'] != 'on' and event['state'] != 'off'
+          debug and ( p 'Duplicating ' + event['summary'] + ' with state ' + event['state'].to_s )
+          event['state'] = 'on' if event['state'].nil?
+          end_event = event.dup # duplicate event for start and end
+          end_event['date'] = event['end']
+          end_event['state'] = 'off'
+          timers['events'].push event
+          timers['events'].push end_event
+        elsif event['type'] == 'state'
+          debug and ( p 'Create state ' + event['state'] + ' plus start and end events' )
+          state = { }
+          state['name'] = event['state']
+          state['start'] = event['start'].dup
+          state['end'] = event['end'].dup
+          timers['states'].push state
+          event['type'] = 'sequence'
+          event['state'] = state['name'] + '_start'
+          end_event = event.dup # duplicate event for start and end
+          end_event['date'] = event['end']
+          end_event['state'] = state['name'] + '_end'
+          timers['events'].push event
+          timers['events'].push end_event
+        else
+          timers['events'].push event
+        end
+      
       end
 
-      # record some timestamps
-      info = { }
-      info['updated_at'] = Time.new.strftime( '%FT%T%:z' )
-      info['start_time'] = query_start.strftime( '%FT%T%:z' )
-      info['end_time'] = query_end.strftime( '%FT%T%:z' )
-
-      # build final timer config
-      timers = { }
-      timers['info'] = info
-      timers['events'] = events
-      timers['states'] = states
-
-      p 'Timer list is: ' + YAML.dump( timers )
-
-      # store the list
-      put_timer_cache timers
-      self.log_timer_event 'update', nil, nil, nil, true
-
-    else
-      self.log_timer_event 'update', nil, nil, nil, false
     end
+
+    put_timer_cache timers
+    self.log_timer_event 'update', nil, nil, nil, true
+
   end
 
   # Return the randomness value that may be in the event title
@@ -1187,9 +1173,9 @@ class LightWaveRF
     debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
     data = data.last 60 * 24 * days
     debug and ( puts 'now got ' + data.length.to_s + ' lines in the log ( 60 * 24 * ' + days.to_s + ' = ' + ( 60 * 24 * days ).to_s + ' )' )
-    if data and data[0]
-      debug and ( puts 'data[0] is ' + data[0].to_s )
-      if data[0][0] != start_date
+    if data and data.first
+      debug and ( puts 'data.first is ' + data.first.to_s )
+      if data.first[0] != start_date
         data[0][0] += start_date
       end
     end

@@ -314,6 +314,7 @@ Here are some ideas on things to automate with the timers:
 
 # History
 
+  * v 0.8   change to ical for google calendar + automated cron
   * v 0.7   log to spreadsheet, fixed + smoothed graphs, embiggened config file
   * v 0.6.4 stop "update" corrupting config
   * v 0.6.3 fix corrupted devices in config
