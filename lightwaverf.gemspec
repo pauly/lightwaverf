@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'lightwaverf'
-  s.version     = '0.8'
+  s.version     = '0.8.0'
   s.date        = Time.now.strftime '%Y-%m-%d'
   s.summary     = 'Home automation with lightwaverf'
   s.description = <<-end
@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.authors     = [ 'Paul Clarke', 'Ian Perrin', 'Julian McLean' ]
   s.email       = 'pauly@clarkeology.com'
   s.files       = [ 'lib/lightwaverf.rb', 'app/views/_graphs.ejs' ]
-  s.homepage    = 'http://www.clarkeology.com/wiki/lightwaverf+ruby'
+  s.homepage    = 'http://www.clarkeology.com/project/lightwaverf'
   s.executables << 'lightwaverf'
   s.executables << 'lightwaverf-config-json'
   s.add_dependency 'htmlentities'
