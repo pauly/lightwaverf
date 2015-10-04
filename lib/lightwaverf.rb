@@ -85,42 +85,6 @@ class LightWaveRF
     config['web'] = '/tmp/lightwaverf_web.html' if config['web'].to_s.empty?
     puts 'going with "' + config['web'].to_s + '"' if debug
 
-    if config['calendar'] || config['monitor'] || config['web']
-      puts 'setting up crontab...' if debug
-      crontab = `crontab -l`.split( /\n/ ) || [ ]
-      crontab = crontab.reject do | line |
-        line =~ /lightwaverf (timer|update_timers|configure|energy|summarise|web)/
-      end
-      executable = `which lightwaverf`.chomp
-      crontab << '# new crontab added by `' + executable + ' configure`'
-
-      if config['monitor']
-        crontab << '# lightwaverf energy monitor check ever 2 mins + summarise every 5'
-        crontab << '*/2 * * * * ' + executable + ' energy > /tmp/lightwaverf_energy.out 2>&1'
-        crontab << '*/5 * * * * ' + executable + ' summarise 7 true > /tmp/lightwaverf_summarise.out 2>&1'
-      end
-
-      if config['web']
-        crontab << '# lightwaverf web page generated every hour'
-        crontab << '45 * * * * ' + executable + ' web > ' + config['web'] + ' 2> /tmp/lightwaverf_web.out'
-      end
-
-      if config['calendar']
-        crontab << '# lightwaverf update_timers 1 hour ahead 24 hours back'
-        crontab << '58 * * * * ' + executable + ' update_timers 60 1440 true > /tmp/lightwaverf_update_timers.out 2>&1'
-        crontab << '# lightwaverf timer every 5 mins off peak'
-        crontab << '*/5 0-6,9-16,23 * * * ' + executable + ' timer 5 true > /tmp/lightwaverf_timer.out 2>&1'
-        crontab << '# lightwaverf timer every minute peak'
-        crontab << '* 7,8,17-22 * * * ' + executable + ' timer 1 true > /tmp/lightwaverf_timer.out 2>&1'
-      end
-
-      File.open( '/tmp/cron.tab', 'w' ) do | handle |
-        handle.write crontab.join( "\n" ) + "\n"
-      end
-      puts `crontab /tmp/cron.tab`
-      puts 'crontab is now' if debug
-      puts `crontab -l` if debug
-    end
     device = 'x'
     while ! device.to_s.empty?
       puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Enter a blank line to finish.'
@@ -156,25 +120,30 @@ class LightWaveRF
     crontab = crontab.reject do | line |
       line =~ Regexp.new( Regexp.escape executable )
     end
+    crontab << '# new crontab added by `' + executable + ' configure`'
 
-    crontab << '# new crontab added by ' + executable
     if config['monitor']
-      crontab << '# lightwaverf energy monitor check ever 2 mins + summarise every 5'
+      crontab << '# ' + executable + ' energy monitor check ever 2 mins + summarise every 5'
       crontab << '*/2 * * * * ' + executable + ' energy > /tmp/lightwaverf_energy.out 2>&1'
       crontab << '*/5 * * * * ' + executable + ' summarise 7 true > /tmp/lightwaverf_summarise.out 2>&1'
     end
+
     if config['web']
-      crontab << '# lightwaverf web page generated every hour'
+      crontab << '# ' + executable + ' web page generated every hour'
       crontab << '45 * * * * ' + executable + ' web > ' + config['web'] + ' 2> /tmp/lightwaverf_web.out'
     end
-    crontab << '# lightwaverf update_timers 1 hour back 4 hours ahead'
-    crontab << '58 * * * * ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
-    crontab << '# lightwaverf update_timers on reboot (works for me on raspbian)'
-    crontab << '@reboot ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
-    crontab << '# lightwaverf timer every 10 mins off peak'
-    crontab << '*/10 0-6,9-16,23 * * * ' + executable + ' timer 10 true >> /tmp/lightwaverf_timer.out 2>&1'
-    crontab << '# lightwaverf timer every 2 minutes peak'
-    crontab << '*/2 7,8,17-22 * * * ' + executable + ' timer 2 >> /tmp/lightwaverf_timer.out 2>&1'
+
+    if config['calendar']
+      crontab << '# ' + executable + ' cache timed events 1 hour back 4 hours ahead'
+      crontab << '58 * * * * ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
+      crontab << '# ' + executable + ' update_timers on reboot (works for me on raspbian)'
+      crontab << '@reboot ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
+      crontab << '# ' + executable + ' timer every 10 mins off peak'
+      crontab << '*/10 0-6,9-16,23 * * * ' + executable + ' timer 10 true > /tmp/lightwaverf_timer.out 2>&1'
+      crontab << '# ' + executable + ' timer every 2 minutes peak'
+      crontab << '*/2 7,8,17-22 * * * ' + executable + ' timer 2 > /tmp/lightwaverf_timer.out 2>&1'
+    end
+
     config['room'].each do | room |
       next unless room['device']
       room['device'].each do | device |
@@ -184,11 +153,6 @@ class LightWaveRF
         crontab << '@reboot ' + executable + ' ' + room['name'] + ' ' + device['name'] + ' ' + device['reboot'] + ' > ' + out_file + ' 2>&1'
       end
     end
-
-    File.open( '/tmp/cron.tab', 'w' ) do | handle |
-      handle.write crontab.join( "\n" ) + "\n"
-    end
-    puts `crontab /tmp/cron.tab`
 
     'Saved config file ' + file
   end
