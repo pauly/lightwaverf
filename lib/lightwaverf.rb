@@ -61,7 +61,8 @@ class LightWaveRF
   #   debug: (Boolean)
   def configure debug = false
     config = self.get_config
-    puts 'What is the ip address of your wifi link? (currently "' + self.get_config['host'].to_s + '"). Enter a blank line to broadcast UDP commands (ok to just hit enter here).'
+    puts 'What is the ip address of your wifi link? (currently "' + self.get_config['host'].to_s + '").'
+    puts 'Enter a blank line to broadcast UDP commands (ok to just hit enter here).'
     host = STDIN.gets.chomp
     config['host'] = host if ! host.to_s.empty?
     puts 'What is the address of your calendar ics file? (currently "' + self.get_config['calendar'].to_s + '")'
@@ -705,18 +706,6 @@ class LightWaveRF
       STDERR.puts 'This contains my test events, not yours! Add your ical url to your config file'
       url = 'https://www.google.com/calendar/ical/aar79qh62fej54nprq6334s7ck%40group.calendar.google.com/public/basic.ics'
     end
-    ctz = 'UTC'
-    case Time.new.zone
-    when 'BST'
-      ctz = 'Europe/London'
-    else
-      p 'time zone is ' + Time.new.zone + ' so look out...'
-    end
-    url += '?ctz=' + ctz
-    if ctz != 'UTC'
-      p 'using time zone is ' + ctz + ' so look out...'
-    end
-    url
   end
 
   def request url
@@ -884,7 +873,7 @@ class LightWaveRF
         else
           timers['events'].push event
         end
-      
+
       end
 
     end
