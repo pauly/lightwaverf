@@ -50,8 +50,8 @@ class LightWaveRF
     help = self.usage + "\n"
     help += "your rooms, and devices, as defined in " + self.get_config_file + ":\n\n"
     help += YAML.dump self.get_config['room']
-    room = self.get_config['room'].last['name'].to_s
-    device = self.get_config['room'].last['device'].last['name'].to_s
+    room = self.get_config['room'].first['name'].to_s
+    device = self.get_config['room'].first['device'].first['name'].to_s
     help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
   end
 
@@ -125,7 +125,7 @@ class LightWaveRF
     if config['monitor']
       crontab << '# ' + executable + ' energy monitor check ever 2 mins + summarise every 5'
       crontab << '*/2 * * * * ' + executable + ' energy > /tmp/lightwaverf_energy.out 2>&1'
-      crontab << '*/5 * * * * ' + executable + ' summarise 7 true > /tmp/lightwaverf_summarise.out 2>&1'
+      crontab << '*/5 * * * * ' + executable + ' summarise 7 > /tmp/lightwaverf_summarise.out 2>&1'
     end
 
     if config['web']
@@ -135,11 +135,11 @@ class LightWaveRF
 
     if config['calendar']
       crontab << '# ' + executable + ' cache timed events 1 hour back 4 hours ahead'
-      crontab << '58 * * * * ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
+      crontab << '58 * * * * ' + executable + ' update_timers 60 240 > /tmp/lightwaverf_update_timers.out 2>&1'
       crontab << '# ' + executable + ' update_timers on reboot (works for me on raspbian)'
-      crontab << '@reboot ' + executable + ' update_timers 60 240 true > /tmp/lightwaverf_update_timers.out 2>&1'
+      crontab << '@reboot ' + executable + ' update_timers 60 240 > /tmp/lightwaverf_update_timers.out 2>&1'
       crontab << '# ' + executable + ' timer every 10 mins off peak'
-      crontab << '*/10 0-6,9-16,23 * * * ' + executable + ' timer 10 true > /tmp/lightwaverf_timer.out 2>&1'
+      crontab << '*/10 0-6,9-16,23 * * * ' + executable + ' timer 10 > /tmp/lightwaverf_timer.out 2>&1'
       crontab << '# ' + executable + ' timer every 2 minutes peak'
       crontab << '*/2 7,8,17-22 * * * ' + executable + ' timer 2 > /tmp/lightwaverf_timer.out 2>&1'
     end
