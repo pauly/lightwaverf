@@ -92,7 +92,7 @@ class LightWaveRF
       puts 'If you already have rooms and devices set up on another lightwaverf app then hit enter here, and "lightwaverf update" first.'
       if device = STDIN.gets.chomp
         parts = device.split ' '
-        if !parts[0].to_s.empty? and !parts[1].to_s.empty?
+        if !parts.first.to_s.empty? and !parts[1].to_s.empty?
           new_room = parts.shift
           config['room'] ||= [ ]
           found = false
@@ -156,10 +156,6 @@ class LightWaveRF
     end
 
     'Saved config file ' + file
-  end
-
-  def set_config_file file
-    @config_file = file
   end
 
   def get_config_file
@@ -331,7 +327,6 @@ class LightWaveRF
 
   # Get variables from the source of lightwaverfhost.co.uk
   # Separated out so it can be tested
-  #
   def get_variables_from body = '', debug = nil
     # debug and ( p '[Info - LightWaveRF Gem] body was ' + body.to_s )
     variables = { }
@@ -468,7 +463,7 @@ class LightWaveRF
   def send room = nil, device = nil, state = 'on', debug = false
     debug and ( p self.time 'send' )
     success = false
-    debug and ( p 'Executing send on device: ' + device + ' in room: ' + room + ' with state: ' + state )
+    debug and ( p 'Executing send on device: ' + device + ' in room: ' + room + ' with ' + ( state ? 'state ' + state : 'no state' ))
     rooms = self.class.get_rooms self.get_config, debug
     debug and ( p self.time 'got rooms' )
 
@@ -493,11 +488,24 @@ class LightWaveRF
         data = self.raw command
         debug and ( p self.time 'response is ' + data.to_s )
         success = true
+        data = self.update_state room, device, state, debug
       else
         STDERR.puts self.usage( room );
       end
     end
     success
+  end
+
+  def update_state room, device, state, debug
+    config = self.get_config
+    config['room'].each do | r |
+      next unless r['name'] == room
+      r['device'].each do | d |
+        next unless d['name'] == device
+        d['state'] = state
+      end
+    end
+    self.put_config config
   end
 
   # A sequence of events
@@ -706,9 +714,10 @@ class LightWaveRF
       STDERR.puts 'This contains my test events, not yours! Add your ical url to your config file'
       url = 'https://www.google.com/calendar/ical/aar79qh62fej54nprq6334s7ck%40group.calendar.google.com/public/basic.ics'
     end
+    url
   end
 
-  def request url
+  def request url, debug = false
     parsed_url = URI.parse url
     http = Net::HTTP.new parsed_url.host, parsed_url.port
     begin
@@ -818,7 +827,7 @@ class LightWaveRF
 
     url = self.get_calendar_url debug
     debug and ( p url )
-    response = self.request url
+    response = self.request url, debug
     if response.code != '200'
       debug and ( p "Response code is: " + response.code)
       return self.log_timer_event 'update', nil, nil, nil, false
@@ -826,9 +835,7 @@ class LightWaveRF
 
     cals = RiCal.parse_string( response.body )
 
-    timers = { }
-    timers['events'] = [ ]
-    timers['states'] = [ ]
+    timers = { 'events' => [ ], 'states' => [ ] }
 
     cals.first.events.each do | e |
       occurs = e.occurrences( :overlapping => [ query_start, query_end ] )
@@ -848,8 +855,8 @@ class LightWaveRF
         # fix this with something like
         #   if self.get_state event['state'] ! starts with F
 
-        if event['type'] == 'device' and event['state'] != 'on' and event['state'] != 'off'
-          debug and ( p 'Duplicating ' + event['summary'] + ' with state ' + event['state'].to_s )
+        if event['type'] == 'device' and event['state'].first != 'o'
+          debug and ( p 'Duplicating ' + event['summary'] + ' with ' + ( event['state'] ? 'state ' + event['state'] : 'no state' ))
           event['state'] = 'on' if event['state'].nil?
           end_event = event.dup # duplicate event for start and end
           end_event['date'] = event['end']
@@ -1172,8 +1179,8 @@ class LightWaveRF
     debug and ( puts 'now got ' + data.length.to_s + ' lines in the log ( 60 * 24 * ' + days.to_s + ' = ' + ( 60 * 24 * days ).to_s + ' )' )
     if data and data.first
       debug and ( puts 'data.first is ' + data.first.to_s )
-      if data.first[0] != start_date
-        data[0][0] += start_date
+      if data.first.first != start_date
+        data.first.first += start_date
       end
     end
     summary_file = self.get_summary_file

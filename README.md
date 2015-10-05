@@ -254,6 +254,7 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.9   update device state in config file on change, a biggie!
   * v 0.8   change to ical for google calendar + automated cron
   * v 0.7   log to spreadsheet, fixed + smoothed graphs, embiggened config file
   * v 0.6.4 stop "update" corrupting config
