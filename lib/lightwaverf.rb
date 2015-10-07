@@ -154,7 +154,10 @@ class LightWaveRF
         crontab << '@reboot ' + executable + ' ' + room['name'] + ' ' + device['name'] + ' ' + device['reboot'] + ' > ' + out_file + ' 2>&1'
       end
     end
-
+    File.open( '/tmp/cron.tab', 'w' ) do | handle |
+      handle.write crontab.join( "\n" ) + "\n"
+    end
+    puts `crontab /tmp/cron.tab`
     'Saved config file ' + file
   end
 
@@ -497,15 +500,17 @@ class LightWaveRF
   end
 
   def update_state room, device, state, debug
+    update = false
     config = self.get_config
     config['room'].each do | r |
       next unless r['name'] == room
       r['device'].each do | d |
         next unless d['name'] == device
+        update = d['state'] != state
         d['state'] = state
       end
     end
-    self.put_config config
+    self.put_config config if update
   end
 
   # A sequence of events
@@ -855,7 +860,7 @@ class LightWaveRF
         # fix this with something like
         #   if self.get_state event['state'] ! starts with F
 
-        if event['type'] == 'device' and event['state'].first != 'o'
+        if event['type'] == 'device' and event['state'] != 'on' and event['state'] != 'off'
           debug and ( p 'Duplicating ' + event['summary'] + ' with ' + ( event['state'] ? 'state ' + event['state'] : 'no state' ))
           event['state'] = 'on' if event['state'].nil?
           end_event = event.dup # duplicate event for start and end
@@ -1185,7 +1190,6 @@ class LightWaveRF
     end
     summary_file = self.get_summary_file
     File.open( summary_file, 'w' ) do |file|
-      # file.write data.to_s
       file.write( JSON.pretty_generate( data ))
     end
     # @todo fix the daily stats, every night it reverts to the minimum value because the timezones are different
