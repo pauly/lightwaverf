@@ -136,7 +136,7 @@ class LightWaveRF
 
     if config['calendar']
       crontab << '# ' + executable + ' cache timed events 1 hour back 4 hours ahead'
-      crontab << '58 * * * * ' + executable + ' update_timers 60 240 > /tmp/lightwaverf_update_timers.out 2>&1'
+      crontab << '56 * * * * ' + executable + ' update_timers 60 240 > /tmp/lightwaverf_update_timers.out 2>&1'
       crontab << '# ' + executable + ' update_timers on reboot (works for me on raspbian)'
       crontab << '@reboot ' + executable + ' update_timers 60 240 > /tmp/lightwaverf_update_timers.out 2>&1'
       crontab << '# ' + executable + ' timer every 10 mins off peak'
@@ -184,7 +184,7 @@ class LightWaveRF
     when 'update'
       message = '### Updated timer cache'
     when 'run'
-      message = '*** Ran timers'
+      # message = '*** Ran timers'
     when 'sequence'
       message = 'Ran sequence: ' + state
     when 'mood'
@@ -924,8 +924,7 @@ class LightWaveRF
   end
 
   def run_timers interval = 5, debug = false
-    p '----------------'
-    p 'Running timers...'
+    p '-- Running timers...'
     get_timer_cache
     debug and ( p 'Timer list is: ' + YAML.dump( @timers ))
 
@@ -937,8 +936,7 @@ class LightWaveRF
     # convert to datetimes
     start_horizon = DateTime.parse start_tm.to_s
     end_horizon = DateTime.parse end_tm.to_s
-    p '----------------'
-    p 'Start horizon is: ' + start_horizon.to_s
+    p '-- Start horizon is: ' + start_horizon.to_s
     p 'End horizon is: ' + end_horizon.to_s
 
     # sort the events and states (to guarantee order if longer intervals are used)
@@ -950,17 +948,14 @@ class LightWaveRF
 
     # process each event
     @timers['events'].each do | event |
-      debug and ( p '----------------' )
-      debug and ( p 'Processing event: ' + event.to_s )
+      debug and ( p '-- Processing event: ' + event.to_s )
       debug and ( p 'Event time is: ' + event['date'].to_s )
 
       # first, assume we'll not be running the event
       run_now = false
 
       # check that it is in the horizon time
-      unless event['date'] >= start_horizon and event['date'] < end_horizon
-        debug and ( p 'Event is NOT in horizon...ignoring')
-      else
+      if event['date'] >= start_horizon and event['date'] < end_horizon
         debug and ( p 'Event is in horizon...')
         run_now = true
 
@@ -1004,8 +999,7 @@ class LightWaveRF
     end
 
     # process the run list
-    p '-----------------------'
-    p 'Events to execute this run are: ' + run_list.to_s
+    p '-- Events to execute this run are: ' + run_list.to_s
 
     triggered = [ ]
 
@@ -1020,9 +1014,8 @@ class LightWaveRF
         p 'Executing sequence. Sequence: ' + event['state']
         result = self.sequence event['state'], debug
       else
-        p 'Executing device. Room: ' + event['room'] + ', Device: ' + event['device'].to_s + ', State: ' + event['state']
-        # result = self.send event['room'], event['device']['name'], event['state'], debug
-        result = self.send event['room'], event['device'].to_s, event['state'], debug # is this right?
+        p 'send ' + event['room'].to_s + ' ' + event['device'].to_s + ' ' + event['state'].to_s + ' ' + debug.to_s
+        result = self.send event['room'], event['device'], event['state'], debug
       end
       sleep 1
       triggered << [ event['room'], event['device'].to_s, event['state'] ]
@@ -1145,6 +1138,7 @@ class LightWaveRF
     d = nil
     last = nil
     prev = nil
+    cut_off_date = ( DateTime.now - days ).to_s
     File.open( self.get_log_file, 'r' ).each_line do | line |
       begin
         line = JSON.parse line
@@ -1152,6 +1146,7 @@ class LightWaveRF
         line = nil
       end
       if line and line['timestamp'] and ( last != line['message']['usage'] )
+        next if ( cut_off_date > line['timestamp'] )
         new_line = []
         d = line['timestamp'][2..3] + line['timestamp'][5..6] + line['timestamp'][8..9] # compact version of date
         ts = Time.parse( line['timestamp'] ).strftime '%s'
@@ -1179,21 +1174,15 @@ class LightWaveRF
         last = line['message']['usage'].to_i
       end
     end
-    debug and ( puts 'got ' + data.length.to_s + ' lines in the log' )
-    data = data.last 60 * 24 * days
-    debug and ( puts 'now got ' + data.length.to_s + ' lines in the log ( 60 * 24 * ' + days.to_s + ' = ' + ( 60 * 24 * days ).to_s + ' )' )
     if data and data.first
-      debug and ( puts 'data.first is ' + data.first.to_s )
       if data.first.first != start_date
-        data.first.first += start_date
+        data.first[0] += start_date
       end
     end
     summary_file = self.get_summary_file
     File.open( summary_file, 'w' ) do |file|
       file.write( JSON.pretty_generate( data ))
     end
-    # @todo fix the daily stats, every night it reverts to the minimum value because the timezones are different
-    # so 1am on the wifi-link looks midnight on the server
     File.open( summary_file.gsub( 'summary', 'daily' ), 'w' ) do | file |
       file.write daily.to_json.to_s
     end
