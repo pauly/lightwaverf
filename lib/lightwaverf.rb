@@ -1136,8 +1136,8 @@ class LightWaveRF
     daily = self.class.get_json file
     start_date = 0
     d = nil
-    last = nil
-    prev = nil
+    last = 0
+    prev = 0
     cut_off_date = ( DateTime.now - days ).to_s
     File.open( self.get_log_file, 'r' ).each_line do | line |
       begin
@@ -1157,7 +1157,7 @@ class LightWaveRF
         end
         new_line << ts
         smoothedUsage = line['message']['usage'].to_i
-        if last && prev
+        if last != 0 and prev != 0
           smoothedUsage = ( smoothedUsage + last + prev ) / 3 # average of last 3 readings
         end
         new_line << smoothedUsage / 10
