@@ -206,14 +206,16 @@ Note that all-day events are not currently supported, so your states (and all ev
 
 You can also adjust the run time of the event (relative to the actual gcal event time) by a number of minutes as follows:
 
-    lounge light on +60 - this will adjust the start/end times of the event 60 minutes later than the actual gcal entry time
-    lounge light on -30 - this will adjust the start/end times of the event 30 minutes earlier than the actual gcal entry time
-    
+    lounge light on +60
+
+This will adjust the start/end times of the event 60 minutes later than the actual gcal entry time.
+
+    lounge light on -30
+
+This will adjust the start/end times of the event 30 minutes earlier than the actual gcal entry time.
+
 Note that this is useful when using sunset/sunrise based timers (see below)
-
-You can also adjust the run time of the event by a random number of minutes as follows:
-
-    lounge light random 60 - this will adjust the start/end times of the event randomly within the 60 minutes around the actual gcal entry time (ie plus or minus 30 minutes)
+If you're setting events more than an hour away from the time of the calendar entry, adjust your crontab values accordingly.
 
 ## Sunset/sunrise
 
@@ -254,6 +256,7 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.10  fix lightwaverfhost issue, add quotes in readme
   * v 0.9.2 fix bundling bug
   * v 0.9.1 fix cron + update state only on change
   * v 0.9   update device state in config file on change, a biggie!

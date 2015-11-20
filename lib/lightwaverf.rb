@@ -26,14 +26,21 @@ class LightWaveRF
   @timers = nil
   @time = nil
 
+  def quote name = ''
+    name = '"' + name + '"' if name.include? ' '
+    name
+  end
+
   def usage room = nil
     rooms = self.class.get_rooms self.get_config
-    config = 'usage: lightwaverf ' + rooms.values.first['name'].to_s + ' ' + rooms.values.first['device'].keys.first.to_s + ' on'
-    config += ' # where "' + rooms.keys.first.to_s + '" is a room in ' + self.get_config_file.to_s
+    roomName = self.quote( rooms.values.first['name'].to_s )
+    config = 'usage: lightwaverf ' + roomName + ' ' + rooms.values.first['device'].keys.first.to_s + ' on'
+    config += ' # where ' + roomName + ' is a room in ' + self.get_config_file.to_s
     if room and rooms[room]
-      config += "\ntry: lightwaverf " + rooms[room]['name'].to_s + ' all on'
+      roomName = self.quote( rooms[room]['name'].to_s )
+      config += "\ntry: lightwaverf " + roomName + ' all on'
       rooms[room]['device'].each do | device |
-        config += "\ntry: lightwaverf " + rooms[room]['name'].to_s + ' ' + device.first.to_s + ' on'
+        config += "\ntry: lightwaverf " + roomName + ' ' + device.first.to_s + ' on'
       end
     end
     config
@@ -52,7 +59,7 @@ class LightWaveRF
     help += YAML.dump self.get_config['room']
     room = self.get_config['room'].first['name'].to_s
     device = self.get_config['room'].first['device'].first['name'].to_s
-    help += "\n\nso to turn on " + room + " " + device + " type \"lightwaverf " + room + " " + device + " on\"\n"
+    help += "\n\nso to turn on " + room + " " + device + " type 'lightwaverf " + self.quote( room ) + " " + self.quote( device ) + " on'\n"
   end
 
   # Configure, build config file. Interactive command line stuff
@@ -89,6 +96,7 @@ class LightWaveRF
     device = 'x'
     while ! device.to_s.empty?
       puts 'Enter the name of a room and its devices, space separated. For example "lounge light socket tv". Enter a blank line to finish.'
+      puts 'If you want spaces in room or device name, wrap them in quotes. For example "\'living room' 'tv' 'table lamp\'"'
       puts 'If you already have rooms and devices set up on another lightwaverf app then hit enter here, and "lightwaverf update" first.'
       if device = STDIN.gets.chomp
         parts = device.split ' '
@@ -135,10 +143,10 @@ class LightWaveRF
     end
 
     if config['calendar']
-      crontab << '# ' + executable + ' cache timed events 1 hour back 4 hours ahead'
-      crontab << '56 * * * * ' + executable + ' update_timers 60 240 > /tmp/lightwaverf_update_timers.out 2>&1'
+      crontab << '# ' + executable + ' cache timed events 2 hours back 6 hours ahead'
+      crontab << '56 * * * * ' + executable + ' update_timers 120 360 > /tmp/lightwaverf_update_timers.out 2>&1'
       crontab << '# ' + executable + ' update_timers on reboot (works for me on raspbian)'
-      crontab << '@reboot ' + executable + ' update_timers 60 240 > /tmp/lightwaverf_update_timers.out 2>&1'
+      crontab << '@reboot ' + executable + ' update_timers 120 360 > /tmp/lightwaverf_update_timers.out 2>&1'
       crontab << '# ' + executable + ' timer every 10 mins off peak'
       crontab << '*/10 0-6,9-16,23 * * * ' + executable + ' timer 10 > /tmp/lightwaverf_timer.out 2>&1'
       crontab << '# ' + executable + ' timer every 2 minutes peak'
@@ -178,7 +186,6 @@ class LightWaveRF
   end
 
   def log_timer_event type, room = nil, device = nil, state = nil, result = false
-    # create log message
     message = nil
     case type
     when 'update'
@@ -234,7 +241,7 @@ class LightWaveRF
   def get_config
     if ! @config
       if ! File.exists? self.get_config_file
-        puts self.get_config_file + ' does not exist - copy lightwaverf-configy.yml from https://github.com/pauly/lightwaverf to your home directory or type lightwaverf configure'
+        puts self.get_config_file + ' does not exist - copy lightwaverf-configy.yml from https://github.com/pauly/lightwaverf to your home directory or type "lightwaverf configure"'
         self.put_config
       end
       @config = YAML.load_file self.get_config_file
@@ -263,9 +270,13 @@ class LightWaveRF
     end
 
     # Login to LightWaveRF Host server
-    uri = URI.parse 'https://www.lightwaverfhost.co.uk/manager/index.php'
+    uri = URI.parse 'https://lightwaverfhost.co.uk/manager/index.php'
     http = Net::HTTP.new uri.host, uri.port
     http.use_ssl = true if uri.scheme == 'https'
+
+    # Thanks Fitz http://lightwaverfcommunity.org.uk/forums/topic/pauly-lightwaverf-command-line-not-working/
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
     data = 'pin=' + pin + '&email=' + email
     headers = { 'Content-Type'=> 'application/x-www-form-urlencoded' }
     resp, data = http.post uri.request_uri, data, headers
@@ -273,8 +284,6 @@ class LightWaveRF
     if resp and resp.body
       rooms = self.get_rooms_from resp.body, debug
       # Update 'room' element in LightWaveRF Gem config file
-      # config['room'] is an array of hashes containing the room name and device names
-      # in the format { 'name' => 'Room Name', 'device' => ['Device 1', Device 2'] }
       if rooms.any?
         config = self.get_config
         config['room'] = rooms
