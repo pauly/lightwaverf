@@ -132,8 +132,8 @@ class LightWaveRF
     crontab << '# new crontab added by `' + executable + ' configure`'
 
     if config['monitor']
-      crontab << '# ' + executable + ' energy monitor check ever 2 mins + summarise every 5'
-      crontab << '*/2 * * * * ' + executable + ' energy > /tmp/lightwaverf_energy.out 2>&1'
+      crontab << '# ' + executable + ' energy monitor check ever minute + summarise every 5'
+      crontab << '* * * * * ' + executable + ' energy > /tmp/lightwaverf_energy.out 2>&1'
       crontab << '*/5 * * * * ' + executable + ' summarise 7 > /tmp/lightwaverf_summarise.out 2>&1'
     end
 
@@ -476,6 +476,18 @@ class LightWaveRF
     debug and ( p self.time 'send' )
     success = false
     debug and ( p 'Executing send on device: ' + device + ' in room: ' + room + ' with ' + ( state ? 'state ' + state : 'no state' ))
+
+
+    pythonFile = self.get_config['pywaverf']
+    if File.exist?( pythonFile )
+      cmd = "#{pythonFile} \"#{room}\" \"#{device}\" \"#{state}\" \"#{debug}\""
+      debug and ( p cmd )
+      p `#{cmd}`
+      debug and ( p self.time 'done python' )
+      return
+    end
+
+
     rooms = self.class.get_rooms self.get_config, debug
     debug and ( p self.time 'got rooms' )
 
@@ -621,16 +633,24 @@ class LightWaveRF
 
   def energy title = nil, text = nil, debug = false
     debug and text and ( p 'energy: ' + text )
-    data = self.raw '666,@?', true
-    # /W=(?<usage>\d+),(?<max>\d+),(?<today>\d+),(?<yesterday>\d+)/.match data # ruby 1.9 only?
-    match = /W=(\d+),(\d+),(\d+),(\d+)/.match data
-    debug and ( p match )
-    if match
+    data = self.raw nil, true, debug
+    debug and ( p data )
+    match = false
+    # {"trans":17903,"mac":"03:0F:DA","time":1452531946,"prod":"pwrMtr","serial":"9EB3FE","router":"4F0500","type":"energy","cUse":1163,"todUse":4680,"yesUse":0}
+    begin
+      data = JSON.parse data[2, data.length]
+      debug and ( p data.inspect )
+    rescue
+      STDERR.puts 'cannot parse ' + data.to_s
+      data = nil
+    end
+    debug and ( p data )
+    if data
       data = {
         'message' => {
-          'usage' => match[1].to_i,
-          'max' => match[2].to_i,
-          'today' => match[3].to_i
+          'usage' => data['cUse'],
+          # 'max' => 'unused now',
+          'today' => data['todUse']
         }
       }
       data['timestamp'] = Time.now.to_s
@@ -682,7 +702,7 @@ class LightWaveRF
   end
 
   def raw command, listen = false, debug = false
-    debug and ( p self.time + ' ' + __method__.to_s + ' ' + command )
+    debug and ( p self.time + ' ' + __method__.to_s + ' ' + command.to_s )
     response = nil
     # Get host address or broadcast address
     host = self.get_config['host'] || '255.255.255.255'
@@ -699,14 +719,16 @@ class LightWaveRF
         # Bind socket to listen for response
         begin
           listener.bind '0.0.0.0', 9761
-        rescue
-          response = "can't bind to listen for a reply"
+        rescue StandardError => e
+          response = "can't bind to listen for a reply; " + e.to_s
         end
       end
       # Broadcast command to server
-      debug and ( p self.time 'sending...' )
-      listener.send command, 0, host, 9760
-      debug and ( p self.time 'sent' )
+      if command
+        debug and ( p self.time 'sending...' )
+        listener.send command, 0, host, 9760
+        debug and ( p self.time 'sent' )
+      end
       # Receive response
       if listen and ! response
         debug and ( p self.time 'receiving...' )
