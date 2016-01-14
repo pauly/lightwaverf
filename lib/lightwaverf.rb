@@ -1140,7 +1140,6 @@ class LightWaveRF
                 <div id="energy_chart">
                   Not seeing an energy chart here?
                   Maybe not working in your device yet, sorry.
-                  This uses google chart api which may generate FLASH :-(
                   Try in a web browser.
                 </div>
                 <h2>Rooms and devices</h2>
@@ -1191,7 +1190,7 @@ class LightWaveRF
         if last != 0 and prev != 0
           smoothedUsage = ( smoothedUsage + last + prev ) / 3 # average of last 3 readings
         end
-        new_line << smoothedUsage / 10
+        new_line << smoothedUsage
         if line['message']['annotation'] and line['message']['annotation']['title'] and line['message']['annotation']['text']
           new_line << line['message']['annotation']['title']
           new_line << line['message']['annotation']['text']
