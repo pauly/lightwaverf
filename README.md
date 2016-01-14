@@ -256,6 +256,8 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.12  use non flash graph for energy usage
+  * v 0.11  use new energy monitor format
   * v 0.10  fix lightwaverfhost issue, add quotes in readme
   * v 0.9.2 fix bundling bug
   * v 0.9.1 fix cron + update state only on change
