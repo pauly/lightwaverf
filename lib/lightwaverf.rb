@@ -1196,7 +1196,7 @@ class LightWaveRF
           new_line << line['message']['annotation']['text']
         end
         data << new_line
-        if (( ! daily[d] ) or ( line['message']['today'] > daily[d]['today'] ))
+        if (( ! daily[d] ) or ( line['message']['today'].to_i > daily[d]['today'].to_i ))
           daily[d] = line['message']
           daily[d].delete 'usage'
         end
