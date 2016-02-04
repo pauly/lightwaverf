@@ -32,7 +32,7 @@ Or if you have already uploaded your data to the LightwaveRF server, download th
 
 Then "pair" your code with your device as normal, put it in pairing mode then turn the device on with the code, with commands like
 
-    lightwaverf lounge light on
+    lightwaverf firmware
 
 The first time you try to pair a device from the computer look out for the "pair with this device" message on the wifi link lcd screen, and click the button to accept.
 
