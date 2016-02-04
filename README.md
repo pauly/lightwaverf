@@ -256,6 +256,7 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.12.1 fix pywaverf option bug introduced in 0.11
   * v 0.12  use non flash graph for energy usage
   * v 0.11  use new energy monitor format
   * v 0.10  fix lightwaverfhost issue, add quotes in readme

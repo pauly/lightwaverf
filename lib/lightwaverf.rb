@@ -478,9 +478,10 @@ class LightWaveRF
     debug and ( p 'Executing send on device: ' + device + ' in room: ' + room + ' with ' + ( state ? 'state ' + state : 'no state' ))
 
 
-    pythonFile = self.get_config['pywaverf']
-    if File.exist?( pythonFile )
-      cmd = "#{pythonFile} \"#{room}\" \"#{device}\" \"#{state}\" \"#{debug}\""
+    # starting to optionally move some functionality out of here
+    alternativeScript = self.get_config['pywaverf']
+    if alternativeScript and File.exist?( alternativeScript )
+      cmd = "#{alternativeScript} \"#{room}\" \"#{device}\" \"#{state}\" \"#{debug}\""
       debug and ( p cmd )
       p `#{cmd}`
       debug and ( p self.time 'done python' )
