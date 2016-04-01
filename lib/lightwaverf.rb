@@ -5,6 +5,7 @@
 # Cope with events that start and end in the same run?
 # Add info about states to timer log
 
+# require 'tzinfo'
 require 'yaml'
 require 'socket'
 require 'net/http'
@@ -875,7 +876,13 @@ class LightWaveRF
     timers = { 'events' => [ ], 'states' => [ ] }
 
     cals.first.events.each do | e |
-      occurs = e.occurrences( :overlapping => [ query_start, query_end ] )
+      begin
+        occurs = e.occurrences(:overlapping => [query_start, query_end])
+      rescue StandardError => err
+        p err.to_s
+        p e.to_s
+        occurs = []
+      end
       next if occurs.length == 0
       occurs.each do | occurrence |
 
