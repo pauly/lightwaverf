@@ -144,14 +144,8 @@ class LightWaveRF
     end
 
     if config['calendar']
-      crontab << '# ' + executable + ' cache timed events 2 hours back 6 hours ahead'
-      crontab << '56 * * * * ' + executable + ' update_timers 120 360 > /tmp/lightwaverf_update_timers.out 2>&1'
-      crontab << '# ' + executable + ' update_timers on reboot (works for me on raspbian)'
-      crontab << '@reboot ' + executable + ' update_timers 120 360 > /tmp/lightwaverf_update_timers.out 2>&1'
-      crontab << '# ' + executable + ' timer every 10 mins off peak'
-      crontab << '*/10 0-6,9-16,23 * * * ' + executable + ' timer 10 > /tmp/lightwaverf_timer.out 2>&1'
-      crontab << '# ' + executable + ' timer every 2 minutes peak'
-      crontab << '*/2 7,8,17-22 * * * ' + executable + ' timer 2 > /tmp/lightwaverf_timer.out 2>&1'
+      crontab << '# ' + executable + ' update schedule ONLY ONCE A DAY'
+      crontab << '56 0 * * * ' + executable + ' schedule true > /tmp/lightwaverf_schedule.out 2>&1'
     end
 
     config['room'].each do | room |
@@ -168,6 +162,90 @@ class LightWaveRF
     end
     puts `crontab /tmp/cron.tab`
     'Saved config file ' + file
+  end
+
+  def schedule debug = false
+    id = 'lwrf_cron'
+    executable = `which lightwaverf`.chomp
+    crontab = `crontab -l`.split( /\n/ ) || [ ]
+    crontab = crontab.reject do | line |
+      line =~ Regexp.new( id )
+    end
+    crontab << '# ' + id + ' new crontab added by `' + executable + ' cron`'
+
+    body = self.calendar_body(debug)
+
+    cals = RiCal.parse_string(body)
+
+    cals.first.events.each do | e |
+      event = self.tokenise_event e, debug
+      event = self.get_modifiers event, debug
+      event.delete 'command'
+      event.delete 'modifier_start'
+      event.delete 'time_modifier'
+
+        endDate = nil
+
+        match = /UNTIL=(\d+)/.match(event['rrule'].to_s)
+        if match
+          endDate = DateTime.parse(match[1].to_s)
+        end
+     
+        match = /FREQ=(\w+);COUNT=(\d+)/.match(event['rrule'])
+        # FREQ=DAILY;COUNT=8 - need to check for weekly, monthly etc
+        if match
+          endDate = event['date'] + match[2].to_i
+        end
+  
+        if !event['rrule']
+          endDate = event['date']
+        end
+
+        if endDate
+          if endDate < Date.today
+            debug && (p 'event ended ' + endDate.to_s)
+            next
+          end
+        end
+
+        if event['type'] == 'device' and event['state'] != 'on' and event['state'] != 'off'
+          event['room'] = 'sequence' if event['room'].nil?
+          crontab << self.cron_entry(event, executable)
+          end_event = event.dup # duplicate event for start and end
+          end_event['date'] = event['end']
+          end_event['state'] = 'off'
+          crontab << self.cron_entry(end_event, executable)
+        else
+          event['room'] = 'sequence' if event['room'].nil?
+          crontab << self.cron_entry(event, executable, true)
+        end
+     
+
+    end
+    File.open( '/tmp/cron.tab', 'w' ) do | handle |
+      handle.write crontab.join( "\n" ) + "\n"
+    end
+    puts `crontab /tmp/cron.tab`
+  end
+
+  def cron_entry event, executable, extra_debug = false
+    id = 'lwrf_cron ' + event['rrule'].to_s + (extra_debug ? ' ' + event.inspect : '')
+    event['state'] = 'on' if event['state'].nil?
+    cmd = event['room'].to_s + ' ' + event['device'].to_s + ' ' + event['state'].to_s
+    out_file = '/tmp/' + cmd + '.out'
+    out_file.gsub! /\s/, '-'
+    return self.cron_entry_times(event) + ' ' + executable + ' ' + cmd + ' > ' + out_file + ' 2>&1 # ' + id
+  end
+
+  def cron_entry_times event
+    return event['date'].strftime('%M %H * * *') if event['rrule'] == 'FREQ=DAILY'
+    match = /BYDAY=([\w,]+)/.match(event['rrule'])
+    return event['date'].strftime('%M %H * * ') + self.rrule_days_of_week(match[1]) if match
+    return event['date'].strftime('%M %H %d %m *')
+  end
+
+  def rrule_days_of_week days
+    return days.gsub('SU', '0').gsub('MO', '1').gsub('TU', '2').gsub('WE', '3').gsub('TH', '4').gsub('FR', '5').gsub('SA', '6')
   end
 
   def get_config_file
@@ -799,7 +877,6 @@ class LightWaveRF
         # handle optional state
         if event['command'].length > 2
           first_char = event['command'][2].to_s[0,1]
-          debug and ( p 'First char is: ' + first_char )
           # if the third word does not start with a modifier flag, assume it's a state
           if /\w/.match first_char
             event['state'] = event['command'][2].to_s
@@ -830,19 +907,20 @@ class LightWaveRF
           debug and ( p 'Found unless modifier: ' + modifier[1..-1] )
           event['unless_modifiers'].push modifier[1..-1]
         elsif modifier[0,1] == '+'
-          debug and ( p 'Found positive time modifier: ' + modifier[1..-1] )
           event['time_modifier'] = modifier[1..-1].to_i
         elsif modifier[0,1] == '-'
-          debug and ( p 'Found negative time modifier: ' + modifier[1..-1] )
           event['time_modifier'] = modifier[1..-1].to_i * -1
         end
       end
     end
     event['time_modifier'] += self.class.variance( event['summary'] ).to_i
     if event['time_modifier'] != 0
-      debug and ( p 'Adjusting timings by: ' + event['time_modifier'].to_s )
+      debug and (p 'Adjusting timings by: ' + event['time_modifier'].to_s + ' ' + event.inspect)
       event['date'] = (( event['date'].to_time ) + event['time_modifier'] * 60 ).to_datetime
-      event['end'] = (( event['end'].to_time ) + event['time_modifier'] * 60 ).to_datetime
+      if event['end']
+        event['end'] = (( event['end'].to_time ) + event['time_modifier'] * 60 ).to_datetime
+      end
+      debug and (p 'dates now ' + event['date'].to_s + ' ' + event['end'].to_s)
     end
     event
   end
@@ -854,7 +932,21 @@ class LightWaveRF
     event['annotate'] = !( /do not annotate/.match event['summary'] )
     event['date'] = e.dtstart
     event['end'] = e.dtend
+    if e.rrule.length > 0
+      event['rrule'] = e.rrule.first
+      # event['rrules'] = event['rrule'].split(';')
+    end
     event = set_event_type event, debug
+  end
+
+  def calendar_body debug = false
+    url = self.get_calendar_url debug
+    debug and ( p url )
+    response = self.request url, debug
+    if response.code != '200'
+      debug and ( p "Response code is: " + response.code)
+    end
+    return response.body
   end
 
   def update_timers past = 60, future = 1440, debug = false
@@ -863,15 +955,9 @@ class LightWaveRF
     query_start = Time.new - self.class.to_seconds( past )
     query_end = Time.new + self.class.to_seconds( future )
 
-    url = self.get_calendar_url debug
-    debug and ( p url )
-    response = self.request url, debug
-    if response.code != '200'
-      debug and ( p "Response code is: " + response.code)
-      return self.log_timer_event 'update', nil, nil, nil, false
-    end
+    body = self.calendar_body(debug)
 
-    cals = RiCal.parse_string( response.body )
+    cals = RiCal.parse_string(body)
 
     timers = { 'events' => [ ], 'states' => [ ] }
 

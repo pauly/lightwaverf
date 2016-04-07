@@ -180,7 +180,9 @@ And you can execute sequences using the calendar by creating an eventas follows:
 
     sequence sunset - run the sequence called 'sunset' in your configuration
 
-## States
+## States - DEPRACATED
+
+I'm not using states, I'm no longer developing this area. They should still work but are unsupported since v0.13 (not that anyone gets in touch anyway).
 
 States offer a way of getting greater flexibility to manage your devices. Essentially, you can create a special gcal entry that sets a state for the period that that entry covers. You can then make other events dependent on that state either being true or false.
 
@@ -237,7 +239,6 @@ Here are some ideas on things to automate with the timers:
 
 * Issue: Does not currently support "all-day" events created in Google Calendar - can be worked around by always specifying start/end times, even if they are 00:00. (This needs some more work on the regex that parses the dates and times from the gcal feed)
 * Improvement: The regex for parsing dates and times from the gcal feed needs to be improved and tightened up
-* Improvement: Possibly add some info about which states are currently applicable to the timer log
 
 ## Problems installing?
 
@@ -256,6 +257,7 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.13  more efficient crons, dropped states
   * v 0.12.1 fix pywaverf option bug introduced in 0.11
   * v 0.12  use non flash graph for energy usage
   * v 0.11  use new energy monitor format

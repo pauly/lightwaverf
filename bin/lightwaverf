@@ -20,6 +20,8 @@ case ARGV[0]
     puts obj.learnmood ARGV[1], ARGV[2], ARGV[3]
   when 'energy'
     puts obj.energy ARGV[1], ARGV[2], ARGV[3]
+  when 'schedule'
+    puts obj.schedule ARGV[1]
   when 'update_timers'
     puts obj.update_timers ARGV[1], ARGV[2], ARGV[3]
   when 'timer'
