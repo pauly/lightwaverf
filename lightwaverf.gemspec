@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'lightwaverf'
-  s.version     = '0.13.0'
+  s.version     = '0.13.1'
   s.date        = Time.now.strftime '%Y-%m-%d'
   s.summary     = 'Home automation with lightwaverf'
   s.description = <<-end
@@ -21,6 +21,6 @@ Gem::Specification.new do |s|
   # s.add_dependency 'net/http'
   # s.add_dependency 'net/https'
   # s.add_dependency 'uri'
-  s.add_runtime_dependency 'json'
+  s.add_runtime_dependency 'json', '~> 1'
   # s.add_dependency 'rexml/document'
 end

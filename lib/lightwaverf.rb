@@ -167,6 +167,15 @@ class LightWaveRF
   def schedule debug = false
     id = 'lwrf_cron'
     executable = `which lightwaverf`.chomp
+    if (executable == "")
+      puts 'did not get executable from `which lightwaverf` - do we have ' + File.expand_path(__FILE__) + '../bin/lightwaverf ???'
+      # executable = File.expand_path(__FILE__) + '/../bin/lightwaverf'
+      executable = '/usr/local/bin/lightwaverf'
+    end
+    if (!executable)
+      puts 'still no, bah, aborting'
+      return
+    end
     crontab = `crontab -l`.split( /\n/ ) || [ ]
     crontab = crontab.reject do | line |
       line =~ Regexp.new( id )
@@ -203,7 +212,6 @@ class LightWaveRF
 
         if endDate
           if endDate < Date.today
-            debug && (p 'event ended ' + endDate.to_s)
             next
           end
         end
@@ -241,7 +249,8 @@ class LightWaveRF
     return event['date'].strftime('%M %H * * *') if event['rrule'] == 'FREQ=DAILY'
     match = /BYDAY=([\w,]+)/.match(event['rrule'])
     return event['date'].strftime('%M %H * * ') + self.rrule_days_of_week(match[1]) if match
-    return event['date'].strftime('%M %H %d %m *')
+    return event['date'].strftime('%M %H %d %m *') if event['date']
+    return '# 0 12 * * *';
   end
 
   def rrule_days_of_week days

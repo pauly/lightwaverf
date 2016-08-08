@@ -257,6 +257,7 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.13.1 fix json dependency
   * v 0.13  more efficient crons, dropped states
   * v 0.12.1 fix pywaverf option bug introduced in 0.11
   * v 0.12  use non flash graph for energy usage
