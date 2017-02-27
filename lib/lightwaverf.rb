@@ -955,6 +955,13 @@ class LightWaveRF
     response = self.request url, debug
     if response.code != '200'
       debug and ( p "Response code is: " + response.code)
+      url.gsub! 'www', 'calendar'
+      debug and ( p url )
+      debug and ( p '@todo use the redirect url in the message here instead' )
+      response = self.request url, debug
+      if response.code != '200'
+        debug and ( p 'Response code is still: ' + response.code)
+      end
     end
     return response.body
   end
