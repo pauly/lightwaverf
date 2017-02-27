@@ -246,7 +246,7 @@ class LightWaveRF
   end
 
   def cron_entry_times event
-    return event['date'].strftime('%M %H * * *') if event['rrule'] == 'FREQ=DAILY'
+    return event['date'].strftime('%M %H * * *') if event['rrule'] =~ /\AFREQ=DAILY/
     match = /BYDAY=([\w,]+)/.match(event['rrule'])
     return event['date'].strftime('%M %H * * ') + self.rrule_days_of_week(match[1]) if match
     return event['date'].strftime('%M %H %d %m *') if event['date']
@@ -783,6 +783,7 @@ class LightWaveRF
         end
         file = self.get_summary_file.gsub 'summary', 'daily'
         data['message']['history'] = self.class.get_json file
+        data['message']['history'] = data['message']['history'][-7, 0]
         data['message']
       rescue
         puts 'error writing to log'
