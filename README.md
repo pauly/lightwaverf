@@ -257,6 +257,8 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.14.0 reinstate state modifiers for cron schedule
+  * v 0.13.2 retry when google calendar address changes
   * v 0.13.1 fix json dependency
   * v 0.13  more efficient crons, dropped states
   * v 0.12.1 fix pywaverf option bug introduced in 0.11

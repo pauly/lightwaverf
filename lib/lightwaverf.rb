@@ -186,48 +186,71 @@ class LightWaveRF
 
     cals = RiCal.parse_string(body)
 
+    state = ''
+
     cals.first.events.each do | e |
       event = self.tokenise_event e, debug
+      next unless event['type'] == 'state'
+      next if event['date'] > Date.today
+      next if event['end'] < Date.today
+      state = event['state'].to_s
+    end
+
+    if state != ''
+      crontab << '# we have state modifier "' + state + '" so not including all events lwrf_cron'
+    end
+
+    debug and (p 'state is ' + state)
+
+    cals.first.events.each do | e |
+      event = self.tokenise_event e, debug
+      next if event['type'] == 'state'
       event = self.get_modifiers event, debug
       event.delete 'command'
       event.delete 'modifier_start'
       event.delete 'time_modifier'
 
-        endDate = nil
-
-        match = /UNTIL=(\d+)/.match(event['rrule'].to_s)
-        if match
-          endDate = DateTime.parse(match[1].to_s)
-        end
+      match = /UNTIL=(\d+)/.match(event['rrule'].to_s)
+      if match
+        endDate = DateTime.parse(match[1].to_s)
+      end
      
-        match = /FREQ=(\w+);COUNT=(\d+)/.match(event['rrule'])
-        # FREQ=DAILY;COUNT=8 - need to check for weekly, monthly etc
-        if match
-          endDate = event['date'] + match[2].to_i
-        end
+      match = /FREQ=(\w+);COUNT=(\d+)/.match(event['rrule'])
+      # FREQ=DAILY;COUNT=8 - need to check for weekly, monthly etc
+      if match
+        endDate = event['date'] + match[2].to_i
+      end
   
-        if !event['rrule']
-          endDate = event['date']
-        end
+      if !event['rrule']
+        endDate = event['date']
+      end
 
-        if endDate
-          if endDate < Date.today
-            next
-          end
-        end
+      if endDate
+        next if endDate < Date.today
+      end
 
-        if event['type'] == 'device' and event['state'] != 'on' and event['state'] != 'off'
-          event['room'] = 'sequence' if event['room'].nil?
-          crontab << self.cron_entry(event, executable)
-          end_event = event.dup # duplicate event for start and end
-          end_event['date'] = event['end']
-          end_event['state'] = 'off'
-          crontab << self.cron_entry(end_event, executable)
-        else
-          event['room'] = 'sequence' if event['room'].nil?
-          crontab << self.cron_entry(event, executable, true)
+      unless event['when_modifiers'].empty?
+        unless event['when_modifiers'].include?(state)
+          debug and ( p state + ' not in when modifiers for ' + event.to_s + ' so skipping' )
+          next
         end
-     
+      end
+      if event['unless_modifiers'].include?(state)
+        debug and ( p state + ' is in unless modifiers ' + event.to_s + ' so skipping' )
+        next
+      end
+
+      if event['type'] == 'device' and event['state'] != 'on' and event['state'] != 'off'
+        event['room'] = 'sequence' if event['room'].nil?
+        crontab << self.cron_entry(event, executable)
+        end_event = event.dup # duplicate event for start and end
+        end_event['date'] = event['end']
+        end_event['state'] = 'off'
+        crontab << self.cron_entry(end_event, executable)
+      else
+        event['room'] = 'sequence' if event['room'].nil?
+        crontab << self.cron_entry(event, executable, true)
+      end
 
     end
     File.open( '/tmp/cron.tab', 'w' ) do | handle |
@@ -905,16 +928,16 @@ class LightWaveRF
 
   def get_modifiers event, debug = false
     event['time_modifier'] = 0
+    event['when_modifiers'] = []
+    event['unless_modifiers'] = []
     if event['command'].length > event['modifier_start']
-      event['when_modifiers'] = [ ]
-      event['unless_modifiers'] = [ ]
       for i in event['modifier_start']..(event['command'].length-1)
         modifier = event['command'][i]
         if modifier[0,1] == '@'
-          debug and ( p 'Found when modifier: ' + modifier[1..-1] )
+          # debug and ( p 'Found when modifier: ' + modifier[1..-1] + ' for ' + event['command'].to_s )
           event['when_modifiers'].push modifier[1..-1]
         elsif modifier[0,1] == '!'
-          debug and ( p 'Found unless modifier: ' + modifier[1..-1] )
+          # debug and ( p 'Found unless modifier: ' + modifier[1..-1] + ' for ' + event['command'].to_s )
           event['unless_modifiers'].push modifier[1..-1]
         elsif modifier[0,1] == '+'
           event['time_modifier'] = modifier[1..-1].to_i
@@ -925,12 +948,10 @@ class LightWaveRF
     end
     event['time_modifier'] += self.class.variance( event['summary'] ).to_i
     if event['time_modifier'] != 0
-      debug and (p 'Adjusting timings by: ' + event['time_modifier'].to_s + ' ' + event.inspect)
       event['date'] = (( event['date'].to_time ) + event['time_modifier'] * 60 ).to_datetime
       if event['end']
         event['end'] = (( event['end'].to_time ) + event['time_modifier'] * 60 ).to_datetime
       end
-      debug and (p 'dates now ' + event['date'].to_s + ' ' + event['end'].to_s)
     end
     event
   end
