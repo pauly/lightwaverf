@@ -104,6 +104,12 @@ This functionality allows you to create simple or complex schedules to automatic
     * get the private address address of your calendar by going to calendar settings and clicking on the XML button at the bottom for the private address
     * `lightwaverf configure`
 
+# Delayed timers (using only cron) BETA
+```
+lightwaverf set lounge light on 10m # turn the lounge light on in 10 minutes
+lightwaverf set lounge light off 4h # turn the lounge light off in 4 hours
+```
+
 # Mood support
 
 Moods are now supported if they are added to the lightwaverf-config.yml file as follows:
@@ -257,6 +263,7 @@ I think this is down to the json library I am using, but haven't tracked it down
 
 # History
 
+  * v 0.15.0 delayed timers
   * v 0.14.0 reinstate state modifiers for cron schedule
   * v 0.13.2 retry when google calendar address changes
   * v 0.13.1 fix json dependency

@@ -126,10 +126,7 @@ class LightWaveRF
     file = self.put_config config
 
     executable = `which lightwaverf`.chomp
-    crontab = `crontab -l`.split( /\n/ ) || [ ]
-    crontab = crontab.reject do | line |
-      line =~ Regexp.new( Regexp.escape executable )
-    end
+    crontab = []
     crontab << '# new crontab added by `' + executable + ' configure`'
 
     if config['monitor']
@@ -140,12 +137,14 @@ class LightWaveRF
 
     if config['web']
       crontab << '# ' + executable + ' web page generated every hour'
-      crontab << '45 * * * * ' + executable + ' web > ' + config['web'] + ' 2> /tmp/lightwaverf_web.out'
+      webTime = Time.now + 300
+      crontab << webTime.strftime('%M * * * *') + ' ' + executable + ' web > ' + config['web'] + ' 2> /tmp/lightwaverf_web.out'
     end
 
     if config['calendar']
       crontab << '# ' + executable + ' update schedule ONLY ONCE A DAY'
-      crontab << '56 0 * * * ' + executable + ' schedule true > /tmp/lightwaverf_schedule.out 2>&1'
+      calendarTime = Time.now + 60
+      crontab << calendarTime.strftime('%M %H * * *') + ' ' + executable + ' schedule true > /tmp/lightwaverf_schedule.out 2>&1'
     end
 
     config['room'].each do | room |
@@ -157,29 +156,54 @@ class LightWaveRF
         crontab << '@reboot ' + executable + ' ' + room['name'] + ' ' + device['name'] + ' ' + device['reboot'] + ' > ' + out_file + ' 2>&1'
       end
     end
-    File.open( '/tmp/cron.tab', 'w' ) do | handle |
-      handle.write crontab.join( "\n" ) + "\n"
+    self.update_cron(crontab, executable)
+    'Saved config file ' + file
+  end
+
+  def executable
+    return `which lightwaverf`.chomp
+  end
+
+  def set_timer room, device, state, eventDelta, debug = false
+    puts 'settimg timer, room: ' + room + ', device: ' + device + ', state: ' + state + ', time: ' + eventDelta if debug
+    cmd = room + ' ' + device + ' ' + state 
+    out_file = '/tmp/' + cmd + '-' + eventDelta + '.out'
+    out_file.gsub! /\s/, '-'
+    eventTime = Time.now + self.class.to_seconds(eventDelta)
+    line = eventTime.strftime('%M %H %d %m %w') + ' ' + self.executable + ' ' + cmd + ' > ' + out_file + ' 2>&1 # one off from set_timer DELETE ME'
+    puts line if debug
+    update_cron [line]
+  end
+
+  def update_cron lines = [], idToIgnore = nil
+    crontab = `crontab -l`.split(/\n/) || []
+    if (idToIgnore)
+      crontab = crontab.reject do |line|
+        line =~ Regexp.new(Regexp.escape(idToIgnore))
+      end
+    end
+    lines.each do |line|
+      crontab << line
+    end
+    File.open( '/tmp/cron.tab', 'w' ) do |handle|
+      handle.write crontab.join("\n") + "\n"
     end
     puts `crontab /tmp/cron.tab`
-    'Saved config file ' + file
   end
 
   def schedule debug = false
     id = 'lwrf_cron'
     executable = `which lightwaverf`.chomp
     if (executable == "")
-      puts 'did not get executable from `which lightwaverf` - do we have ' + File.expand_path(__FILE__) + '../bin/lightwaverf ???'
-      # executable = File.expand_path(__FILE__) + '/../bin/lightwaverf'
-      executable = '/usr/local/bin/lightwaverf'
+      executable = File.join(File.dirname(File.dirname(File.expand_path(__FILE__))), 'bin', 'lightwaverf')
+      puts 'did not get executable from `which lightwaverf` - do we have ' + executable + '???'
+      # executable = '/usr/local/bin/lightwaverf'
     end
-    if (!executable)
+    if (!File.exists?(executable))
       puts 'still no, bah, aborting'
       return
     end
-    crontab = `crontab -l`.split( /\n/ ) || [ ]
-    crontab = crontab.reject do | line |
-      line =~ Regexp.new( id )
-    end
+    crontab = []
     crontab << '# ' + id + ' new crontab added by `' + executable + ' cron`'
 
     body = self.calendar_body(debug)
@@ -197,7 +221,7 @@ class LightWaveRF
     end
 
     if state != ''
-      crontab << '# we have state modifier "' + state + '" so not including all events lwrf_cron'
+      crontab << '# we have state modifier "' + state + '" so not including all events ' +id
     end
 
     debug and (p 'state is ' + state)
@@ -253,10 +277,7 @@ class LightWaveRF
       end
 
     end
-    File.open( '/tmp/cron.tab', 'w' ) do | handle |
-      handle.write crontab.join( "\n" ) + "\n"
-    end
-    puts `crontab /tmp/cron.tab`
+    self.update_cron(crontab, id)
   end
 
   def cron_entry event, executable, extra_debug = false

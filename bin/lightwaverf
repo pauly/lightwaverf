@@ -24,6 +24,8 @@ case ARGV[0]
     puts obj.schedule ARGV[1]
   when 'update_timers'
     puts obj.update_timers ARGV[1], ARGV[2], ARGV[3]
+  when 'set'
+    puts obj.set_timer ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]
   when 'timer'
     puts obj.run_timers ARGV[1], ARGV[2]
   when 'run_timers'
