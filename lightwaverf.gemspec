@@ -21,6 +21,6 @@ Gem::Specification.new do |s|
   # s.add_dependency 'net/http'
   # s.add_dependency 'net/https'
   # s.add_dependency 'uri'
-  s.add_runtime_dependency 'json', '~> 1'
+  s.add_runtime_dependency 'json', '~> 3'
   # s.add_dependency 'rexml/document'
 end
